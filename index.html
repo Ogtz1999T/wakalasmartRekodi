@@ -45,8 +45,40 @@
 
         <main class="p-4 space-y-6">
             
+            <!-- FAIDA NA FAQ (ZIPO MWANZO KABISA KABLA YA LOGIN/REGISTER) -->
+            <div id="landingInfoSection" class="max-w-md mx-auto space-y-4 no-print">
+                <div class="bg-blue-900 text-white p-5 rounded-xl shadow-md space-y-3">
+                    <h3 class="font-bold text-sm text-yellow-300 border-b border-blue-800 pb-2">🌟 Faida za Kutumia Mfumo</h3>
+                    <ul class="text-xs space-y-1.5 text-blue-100 list-disc list-inside">
+                        <li><b>Uhifadhi Salama:</b> Data zako zinakaa salama kwenye kifaa chako hazipotei.</li>
+                        <li><b>Auto-Commission:</b> Kokotoo cha asilimia (%) za miamala moja kwa moja.</li>
+                        <li><b>Uchambuzi wa Salio:</b> Gundua upungufu au ziada ya mtaji papo hapo.</li>
+                        <li><b>Urahisi wa Ku-print:</b> Chapisha ripoti za siku (Statement) kwa urahisi.</li>
+                    </ul>
+                </div>
+
+                <!-- FAQ INAYOBONYEKA (ACCORDION) -->
+                <div class="bg-white p-5 rounded-xl shadow-md border space-y-3">
+                    <h3 class="font-bold text-sm text-blue-900 border-b pb-2">❓ Maswali Yanayoulizwa Mara kwa Mara (FAQ)</h3>
+                    <div class="space-y-2 text-xs">
+                        <details class="bg-slate-50 p-2.5 rounded border cursor-pointer">
+                            <summary class="font-bold text-blue-900">1. Je, data zangu ziko salama?</summary>
+                            <p class="mt-2 text-slate-600 leading-relaxed">Ndiyo, data zote zinahifadhiwa kwenye kumbukumbu salama za kivinjari chako (localStorage).</p>
+                        </details>
+                        <details class="bg-slate-50 p-2.5 rounded border cursor-pointer">
+                            <summary class="font-bold text-blue-900">2. Nikisahau neno la siri (Password) nifanyeje?</summary>
+                            <p class="mt-2 text-slate-600 leading-relaxed">Wasiliana mara moja na IT Msaidizi kupitia WhatsApp namba <b>+255 699 230406</b> kwa kubonyeza kitufe cha kijani.</p>
+                        </details>
+                        <details class="bg-slate-50 p-2.5 rounded border cursor-pointer">
+                            <summary class="font-bold text-blue-900">3. Nawezaje kupata msaada nikikwama?</summary>
+                            <p class="mt-2 text-slate-600 leading-relaxed">Bonyeza kitufe cha "Wasiliana na IT (WhatsApp)" kilichopo juu au chini kwenye fomu kukuletea msaada moja kwa moja.</p>
+                        </details>
+                    </div>
+                </div>
+            </div>
+
             <!-- 1. LOGIN -->
-            <div id="loginCard" class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-6 border">
+            <div id="loginCard" class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6 border">
                 <h2 class="text-2xl font-bold text-slate-800 text-center mb-4">Ingia Kwenye Akaunti</h2>
                 <div class="space-y-4">
                     <div>
@@ -73,7 +105,7 @@
             </div>
 
             <!-- 2. REGISTER -->
-            <div id="registerCard" class="hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-6 border">
+            <div id="registerCard" class="hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 border">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-slate-800">Usajili wa Wakala</h2>
                     <button onclick="showLoginForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-semibold">← Rudi Kwenye Login</button>
@@ -114,37 +146,6 @@
                     <a href="https://wa.me/255699230406?text=Habari%20IT,%20nimeshindwa%20kujisajili%20kwenye%20mfumo%20wa%20Jombay." target="_blank" class="text-green-700 font-bold underline inline-flex items-center gap-1 text-sm">
                         👉 Wasiliana na IT WhatsApp (+255 699 230406)
                     </a>
-                </div>
-            </div>
-
-            <!-- FAQ NA FAIDA ZA MFUMO (ZINAONEKANA KABLA YA KLOGIN) -->
-            <div id="landingInfoSection" class="max-w-2xl mx-auto space-y-6 bg-white p-6 rounded-xl border shadow-sm">
-                <div>
-                    <h3 class="font-bold text-blue-900 text-base border-b pb-2 mb-3">🌟 Faida za Kutumia Mfumo wa JOMBAY ENTERPRISES</h3>
-                    <ul class="list-disc list-inside text-xs space-y-2 text-slate-700 leading-relaxed">
-                        <li><b>Uhifadhi Imara Usiofutika:</b> Data zako za asubuhi, jioni na miamala zinakaa salama kwenye kifaa chako na hazitapotea hata ukifanya refresh au kufunga browser.</li>
-                        <li><b>Auto-Commission (Hesabu za Kamisheni Moja kwa Moja):</b> Mfumo unakokotoa asilimia (%) ya kamisheni za kutuma na kutoa kwa kila mtandao kiotomatiki.</li>
-                        <li><b>Uchambuzi wa Upungufu na Ziada:</b> Mfumo unakupa taarifa ya haraka kama mtaji umepungua au kuongezeka na kukusaidia kugundua mhamo wa pesa kati ya Cash na Float.</li>
-                        <li><b>Urahisi wa Ku-print Statement:</b> Unaweza kutazama kumbukumbu za nyuma na kuchapisha (Print) ripoti ya siku kwa urahisi kabisa.</li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h3 class="font-bold text-blue-900 text-base border-b pb-2 mb-3">❓ Maswali Yanayoulizwa Mara kwa Mara (FAQ)</h3>
-                    <div class="space-y-3 text-xs text-slate-700">
-                        <div>
-                            <p class="font-bold text-slate-900">1. Je, data zangu ziko salama endapo nikitoka kwenye mfumo?</p>
-                            <p>Ndiyo, data zote zinahifadhiwa kwenye kumbukumbu za kivinjari chako (localStorage) na haziwezi kufutika bila wewe mwenyewe kuzifuta.</p>
-                        </div>
-                        <div>
-                            <p class="font-bold text-slate-900">2. Nifanye nini nikisahau neno langu la siri (Password)?</p>
-                            <p>Wasiliana moja kwa moja na IT Msaidizi kupitia WhatsApp namba <b>+255 699 230406</b> kwa kubonyeza kitufe cha kijani cha WhatsApp kilichopo hapo juu.</p>
-                        </div>
-                        <div>
-                            <p class="font-bold text-slate-900">3. Je, ninaweza kutumia mfumo huu kwa akaunti za Regular na Super Agent?</p>
-                            <p>Ndiyo, wakati wa kujisajili unaweza kuchagua aina ya akaunti yako (Wakala wa Kawaida au Super Agent wenye sub-lines za mitandao).</p>
-                        </div>
-                    </div>
                 </div>
             </div>
 
