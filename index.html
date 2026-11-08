@@ -209,4 +209,855 @@
                             </select>
                         </div>
                         <div class="text-right">
-                            <span class="text-xs text-slate-500 block">A
+                            <span class="text-xs text-slate-500 block">Akaunti:</span>
+                            <span id="activeUserLabel" class="font-bold text-blue-900"></span>
+                        </div>
+                    </div>
+
+                    <!-- 3 SUB TABS -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-200 p-1.5 rounded-xl no-print">
+                        <button id="subTab1" onclick="switchSubTab(1)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow">1. Mtaji wa Asubuhi</button>
+                        <button id="subTab2" onclick="switchSubTab(2)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">2. Funga Hesabu Jioni</button>
+                        <button id="subTab3" onclick="switchSubTab(3)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">3. Miamala (Tuma & Toa Auto)</button>
+                    </div>
+
+                    <!-- SEHEMU YA 1: MTAJI WA ASUBUSHI -->
+                    <div id="section1" class="space-y-6">
+                        <div class="bg-white rounded-xl shadow-sm border p-4">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Cash Taslimu (Asubuhi)</label>
+                            <input type="number" id="cashMorning" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold outline-none">
+                        </div>
+                        <div id="morningFloatContainer" class="space-y-4"></div>
+                        <button onclick="saveMorningEntry()" class="w-full bg-blue-900 text-white font-bold py-3.5 rounded-lg">Hifadhi Mtaji wa Asubuhi</button>
+                    </div>
+
+                    <!-- SEHEMU YA 2: FUNGA HESABU JIONI -->
+                    <div id="section2" class="hidden space-y-6">
+                        <div class="no-print">
+                            <button onclick="switchSubTab(1)" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
+                                ← Rudi Mtaji wa Asubuhi
+                            </button>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-md border p-5 space-y-4">
+                            <div class="bg-indigo-900 text-white p-3 rounded-lg font-bold text-sm">Funga Hesabu za Jioni (Cash & Float Zilizobaki)</div>
+                            <div id="morningAlertNotice" class="hidden bg-red-50 border p-3 rounded-lg text-xs text-red-700 font-semibold">⚠️ Hujajaza mtaji wa Asubuhi! Nenda sehemu ya 1 uhifadhi kwanza.</div>
+                            <div class="bg-slate-50 p-3 rounded-lg border flex justify-between text-xs">
+                                <span>Mtaji wa Asubuhi (Umevutwa):</span>
+                                <b id="displayPulledMorningTotal" class="text-blue-900 text-sm">TSH 0</b>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Cash ya Usiku Mkononi (TSH)</label>
+                                <input type="number" id="cashNight" oninput="calculateTotals()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
+                            </div>
+                            <div id="eveningFloatContainer" class="space-y-4 pt-2"></div>
+                        </div>
+
+                        <div class="bg-white rounded-xl border p-4 space-y-2 border-l-4 border-l-blue-900">
+                            <h3 class="font-bold text-slate-800 text-sm">Maelezo ya Tofauti / Mapungufu / Mhamo wa Pesa</h3>
+                            <textarea id="dailyDeficitNotes" rows="3" placeholder="Andika maelezo kwa nini cash au float imepungua au kuongezeka..." class="w-full border rounded-lg p-2 text-sm"></textarea>
+                        </div>
+
+                        <!-- UCHAMBUZI WA SALIO LA SIKU -->
+                        <div class="bg-blue-900 text-white rounded-xl shadow-lg p-6 space-y-4">
+                            <h3 class="font-bold text-yellow-400 text-base border-b border-blue-800 pb-2">Uchambuzi wa Salio la Siku</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div class="bg-blue-800 p-3 rounded-lg">
+                                    <span class="text-xs text-blue-200 block">Mtaji Asubuhi:</span>
+                                    <span id="summaryMorningTotal" class="text-lg font-bold">TSH 0</span>
+                                </div>
+                                <div class="bg-blue-800 p-3 rounded-lg">
+                                    <span class="text-xs text-blue-200 block">Salio Usiku (Cash + Float):</span>
+                                    <span id="summaryNightTotal" class="text-lg font-bold">TSH 0</span>
+                                </div>
+                            </div>
+
+                            <!-- TAHADHARI -->
+                            <div id="deficitWarningBox" class="hidden p-4 rounded-xl space-y-2 border-l-4 shadow-md bg-white text-slate-900">
+                                <h4 id="deficitWarningTitle" class="font-bold text-sm flex items-center gap-1"></h4>
+                                <div id="deficitWarningText" class="text-xs space-y-1 leading-relaxed"></div>
+                            </div>
+
+                            <button onclick="saveEveningEntry()" class="w-full bg-yellow-400 text-blue-950 font-bold py-3.5 rounded-lg text-base">Kamilisha na Hifadhi Funga Siku</button>
+                        </div>
+                    </div>
+
+                    <!-- SEHEMU YA 3: MIAMALA -->
+                    <div id="section3" class="hidden space-y-6">
+                        <div class="no-print">
+                            <button onclick="switchSubTab(2)" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
+                                ← Rudi Funga Hesabu Jioni
+                            </button>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-md border-2 border-blue-900 p-5 space-y-4">
+                            <div class="bg-blue-900 text-white p-3 rounded-lg font-bold text-sm">Miamala Unazotuma na Kutoa (Auto Commission)</div>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Mtandao</label>
+                                    <select id="txNetworkSelect" class="w-full border rounded-lg p-2.5 text-sm bg-white font-semibold text-blue-900"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Aina ya Muamala</label>
+                                    <select id="txTypeSelect" onchange="updateCommissionPreview()" class="w-full border rounded-lg p-2.5 text-sm bg-white font-semibold">
+                                        <option value="withdraw">Kutoa (Withdraw)</option>
+                                        <option value="send">Kutuma (Send)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kiasi cha Pesa (TSH)</label>
+                                    <input type="number" id="txAmountInput" oninput="updateCommissionPreview()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kamisheni (Auto %)</label>
+                                    <input type="number" id="txCommissionInput" placeholder="0" class="w-full border border-green-300 bg-green-50 rounded-lg p-2.5 text-sm font-bold text-green-800">
+                                </div>
+                            </div>
+                            <button onclick="addTransactionItem()" class="w-full bg-blue-900 text-white font-bold py-2.5 rounded-lg text-sm">Ongeza Muamala Huu</button>
+
+                            <div class="border rounded-lg overflow-hidden mt-3">
+                                <div class="bg-slate-100 p-2.5 font-bold text-slate-700 text-xs flex justify-between items-center">
+                                    <span>Miamala Iliyorekodiwa:</span>
+                                    <span id="txCountBadge" class="bg-blue-900 text-white px-2 py-0.5 rounded text-[10px]">0</span>
+                                </div>
+                                <div id="transactionsListContainer" class="p-3 divide-y">
+                                    <p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-green-900 text-white p-4 rounded-xl flex justify-between items-center">
+                                <span class="font-semibold text-sm">Jumla ya Kamisheni za Miamala Leo:</span>
+                                <span id="summaryTotalCommission" class="text-xl font-extrabold text-yellow-300">TSH 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- VIEW HISTORY -->
+                <div id="viewHistory" class="hidden space-y-4">
+                    <div class="bg-white p-4 rounded-xl border flex justify-between items-center no-print">
+                        <h3 class="font-bold text-slate-800">Kumbukumbu Zote Zisizofutika</h3>
+                        <button onclick="switchMainTab('new')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-semibold">← Rudi Shughuli za Siku</button>
+                    </div>
+                    <div id="historyContainer" class="space-y-3"></div>
+                </div>
+
+                <!-- VIEW ADMIN -->
+                <div id="viewAdmin" class="hidden space-y-6">
+                    <div class="bg-amber-50 border p-4 rounded-xl font-bold text-amber-900 flex justify-between items-center">
+                        <span>Admin Panel - Orodha ya Watumiaji na Password Zao</span>
+                        <button onclick="switchMainTab('new')" class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-xs font-semibold">← Rudi Nyumbani</button>
+                    </div>
+                    <div class="bg-white rounded-xl border overflow-hidden">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="bg-slate-100 text-xs">
+                                    <th class="p-3">Username</th>
+                                    <th class="p-3">Aina ya Akaunti</th>
+                                    <th class="p-3">Namba ya Simu</th>
+                                    <th class="p-3">Password</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUsersTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL FOR STATEMENT / DETAILS -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3 no-print">
+                <h3 class="font-bold text-lg" id="modalTitle">Taarifa ya Kina</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold">Chapisha Statement (Print)</button>
+                    <button onclick="closeModal()" class="text-slate-500 font-bold px-2">Funga X</button>
+                </div>
+            </div>
+            <div id="printableArea">
+                <div id="modalBody" class="space-y-4 text-xs"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT -->
+    <script>
+        const NETWORKS_CONFIG = [
+            { id: 'airtel', name: 'Airtel Money', sendRate: 0.005, withdrawRate: 0.01 },
+            { id: 'voda', name: 'Vodacom M-Pesa', sendRate: 0.006, withdrawRate: 0.012 },
+            { id: 'yas', name: 'Mixx by Yas', sendRate: 0.005, withdrawRate: 0.01 },
+            { id: 'halo', name: 'HaloPesa', sendRate: 0.005, withdrawRate: 0.01 },
+            { id: 'crdb', name: 'CRDB Wakala', sendRate: 0.004, withdrawRate: 0.008 },
+            { id: 'nmb', name: 'NMB Wakala', sendRate: 0.004, withdrawRate: 0.008 },
+            { id: 'nbc', name: 'NBC Kiganjani', sendRate: 0.004, withdrawRate: 0.008 }
+        ];
+
+        let currentUser = null;
+        let activeTransactionsToday = [];
+
+        if (!localStorage.getItem('jombay_users')) {
+            localStorage.setItem('jombay_users', JSON.stringify([
+                { username: 'admin', email: 'admin@jombay.com', phone: '0700000000', password: 'admin123', role: 'admin', accountType: 'super' },
+                { username: 'wakala1', email: 'wakala1@gmail.com', phone: '0712345678', password: '1234', role: 'user', accountType: 'super' }
+            ]));
+        }
+
+        if (!localStorage.getItem('jombay_entries')) {
+            localStorage.setItem('jombay_entries', JSON.stringify([]));
+        }
+
+        document.getElementById('entryDate').valueAsDate = new Date();
+
+        window.onload = function() {
+            renderDynamicForms();
+            populateNetworkSelect();
+            checkExistingSession();
+            document.getElementById('entryDate').addEventListener('change', checkAndPullMorningData);
+        };
+
+        function switchSubTab(num) {
+            document.getElementById('section1').classList.add('hidden');
+            document.getElementById('section2').classList.add('hidden');
+            document.getElementById('section3').classList.add('hidden');
+
+            document.getElementById('subTab1').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+            document.getElementById('subTab2').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+            document.getElementById('subTab3').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+
+            if (num === 1) {
+                document.getElementById('section1').classList.remove('hidden');
+                document.getElementById('subTab1').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+            } else if (num === 2) {
+                document.getElementById('section2').classList.remove('hidden');
+                document.getElementById('subTab2').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+                checkAndPullMorningData();
+            } else if (num === 3) {
+                document.getElementById('section3').classList.remove('hidden');
+                document.getElementById('subTab3').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+            }
+        }
+
+        function populateNetworkSelect() {
+            const select = document.getElementById('txNetworkSelect');
+            if(!select) return;
+            select.innerHTML = '';
+            NETWORKS_CONFIG.forEach(net => {
+                select.innerHTML += `<option value="${net.id}">${net.name}</option>`;
+            });
+            updateCommissionPreview();
+        }
+
+        function updateCommissionPreview() {
+            const netId = document.getElementById('txNetworkSelect').value;
+            const txType = document.getElementById('txTypeSelect').value;
+            const amount = parseFloat(document.getElementById('txAmountInput').value) || 0;
+            const net = NETWORKS_CONFIG.find(n => n.id === netId);
+            if (!net) return;
+            let rate = txType === 'send' ? net.sendRate : net.withdrawRate;
+            document.getElementById('txCommissionInput').value = Math.round(amount * rate);
+        }
+
+        document.getElementById('txNetworkSelect').addEventListener('change', updateCommissionPreview);
+
+        function addTransactionItem() {
+            const netId = document.getElementById('txNetworkSelect').value;
+            const txType = document.getElementById('txTypeSelect').value;
+            const amount = parseFloat(document.getElementById('txAmountInput').value) || 0;
+            const commission = parseFloat(document.getElementById('txCommissionInput').value) || 0;
+
+            if (amount <= 0) { alert('Weka kiasi halisi cha pesa.'); return; }
+            const net = NETWORKS_CONFIG.find(n => n.id === netId);
+
+            activeTransactionsToday.push({
+                id: 'TX_' + Date.now(),
+                networkId: netId,
+                networkName: net.name,
+                type: txType,
+                amount: amount,
+                commission: commission
+            });
+
+            document.getElementById('txAmountInput').value = '';
+            document.getElementById('txCommissionInput').value = '';
+            renderTransactionsList();
+            calculateTotals();
+        }
+
+        function removeTransactionItem(id) {
+            activeTransactionsToday = activeTransactionsToday.filter(t => t.id !== id);
+            renderTransactionsList();
+            calculateTotals();
+        }
+
+        function renderTransactionsList() {
+            const container = document.getElementById('transactionsListContainer');
+            document.getElementById('txCountBadge').innerText = activeTransactionsToday.length;
+
+            if (activeTransactionsToday.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>`;
+                return;
+            }
+
+            let html = '';
+            activeTransactionsToday.forEach(tx => {
+                const typeLabel = tx.type === 'send' ? 'Kutuma' : 'Kutoa';
+                html += `
+                    <div class="py-2 flex justify-between items-center text-xs">
+                        <div><b>${tx.networkName}</b> (${typeLabel}): TSH ${tx.amount.toLocaleString()}</div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-green-700 font-bold">+TSH ${tx.commission.toLocaleString()}</span>
+                            <button onclick="removeTransactionItem('${tx.id}')" class="text-red-500 font-bold">Ondoa</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderDynamicForms() {
+            const morningCont = document.getElementById('morningFloatContainer');
+            const eveningCont = document.getElementById('eveningFloatContainer');
+            if(!morningCont || !eveningCont) return;
+            morningCont.innerHTML = '';
+            eveningCont.innerHTML = '';
+
+            const isSuper = currentUser && currentUser.accountType === 'super';
+
+            NETWORKS_CONFIG.forEach(net => {
+                let mHtml = `<div><label class="block text-xs text-slate-600 mb-1">Float Asubuhi ${isSuper ? '(Super)' : ''}</label><input type="number" id="${net.id}Morning_super" placeholder="0" class="w-full border rounded p-2 text-sm"></div>`;
+                if(isSuper) mHtml += `<div class="mt-2"><label class="block text-xs text-slate-600 mb-1">Float Asubuhi (Sub Line)</label><input type="number" id="${net.id}Morning_sub" placeholder="0" class="w-full border rounded p-2 text-sm bg-slate-50"></div>`;
+                morningCont.innerHTML += `<div class="p-4 bg-white rounded-xl border"><h4 class="font-bold text-blue-900 mb-2 text-sm">${net.name}</h4>${mHtml}</div>`;
+
+                let eHtml = `<div><label class="block text-xs text-slate-600 mb-1">Float Jioni ${isSuper ? '(Super)' : ''}</label><input type="number" id="${net.id}Night_super" oninput="calculateTotals()" placeholder="0" class="w-full border rounded p-2 text-sm"></div>`;
+                if(isSuper) eHtml += `<div><label class="block text-xs text-slate-600 mb-1">Float Jioni (Sub Line)</label><input type="number" id="${net.id}Night_sub" oninput="calculateTotals()" placeholder="0" class="w-full border rounded p-2 text-sm bg-slate-50"></div>`;
+                eveningCont.innerHTML += `<div class="p-3 bg-slate-50 rounded-lg border"><h4 class="font-bold text-blue-900 mb-2 text-sm">${net.name}</h4><div class="grid grid-cols-1 ${isSuper?'md:grid-cols-2':''} gap-2">${eHtml}</div></div>`;
+            });
+        }
+
+        function showRegisterForm() { 
+            document.getElementById('loginCard').classList.add('hidden'); 
+            document.getElementById('forgotPasswordCard').classList.add('hidden');
+            document.getElementById('landingInfoSection').classList.add('hidden');
+            document.getElementById('registerCard').classList.remove('hidden'); 
+        }
+
+        function showLoginForm() { 
+            document.getElementById('registerCard').classList.add('hidden'); 
+            document.getElementById('forgotPasswordCard').classList.add('hidden');
+            document.getElementById('loginCard').classList.remove('hidden'); 
+            document.getElementById('landingInfoSection').classList.remove('hidden');
+        }
+
+        function showForgotPasswordForm() {
+            document.getElementById('loginCard').classList.add('hidden');
+            document.getElementById('registerCard').classList.add('hidden');
+            document.getElementById('landingInfoSection').classList.add('hidden');
+            document.getElementById('forgotPasswordCard').classList.remove('hidden');
+        }
+
+        function handleLogin() {
+            const userIn = document.getElementById('loginUsername').value.trim().toLowerCase();
+            const passIn = document.getElementById('loginPassword').value.trim();
+            const users = JSON.parse(localStorage.getItem('jombay_users')) || [];
+            const found = users.find(u => u.username.toLowerCase() === userIn && u.password === passIn);
+            if (found) { currentUser = found; localStorage.setItem('jombay_session', JSON.stringify(found)); showDashboard(); }
+            else { alert('Jina au Password sio sahihi!'); }
+        }
+
+        function handleRegisterSubmit() {
+            const userIn = document.getElementById('regUsername').value.trim().toLowerCase();
+            const emailIn = document.getElementById('regEmail').value.trim();
+            const phoneIn = document.getElementById('regPhone').value.trim();
+            const typeIn = document.getElementById('regAccountType').value;
+            const passIn = document.getElementById('regPassword').value.trim();
+            if (!userIn || !passIn || !phoneIn) { alert('Tafadhali jaza sehemu zote muhimu.'); return; }
+            let users = JSON.parse(localStorage.getItem('jombay_users')) || [];
+            if(users.some(u => u.username === userIn)) { alert('Username imeshatumika!'); return; }
+            users.push({ username: userIn, email: emailIn, phone: phoneIn, password: passIn, role: 'user', accountType: typeIn });
+            localStorage.setItem('jombay_users', JSON.stringify(users));
+            alert('Usajili umefanikiwa! Sasa unaweza kuingia.'); 
+            showLoginForm();
+        }
+
+        function handleResetPassword() {
+            const usernameIn = document.getElementById('forgotUsername').value.trim().toLowerCase();
+            const phoneIn = document.getElementById('forgotPhone').value.trim();
+            const newPass = document.getElementById('forgotNewPassword').value.trim();
+
+            if (!usernameIn || !phoneIn || !newPass) {
+                alert('Tafadhali jaza taarifa zote.');
+                return;
+            }
+
+            let users = JSON.parse(localStorage.getItem('jombay_users')) || [];
+            let userIndex = users.findIndex(u => u.username.toLowerCase() === usernameIn && u.phone === phoneIn);
+
+            if (userIndex !== -1) {
+                users[userIndex].password = newPass;
+                localStorage.setItem('jombay_users', JSON.stringify(users));
+                alert('Password imebadilishwa mafanikio! Sasa unaweza kuingia.');
+                showLoginForm();
+            } else {
+                alert('Username au Namba ya Simu havikidhi au havilingani na zilizopo kwenye mfumo.');
+            }
+        }
+
+        function checkExistingSession() {
+            const session = localStorage.getItem('jombay_session');
+            if (session) { currentUser = JSON.parse(session); showDashboard(); }
+        }
+
+        function showDashboard() {
+            document.getElementById('loginCard').classList.add('hidden');
+            document.getElementById('registerCard').classList.add('hidden');
+            document.getElementById('forgotPasswordCard').classList.add('hidden');
+            document.getElementById('landingInfoSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            document.getElementById('userInfoHeader').classList.remove('hidden');
+            document.getElementById('globalBackBtn').classList.remove('hidden');
+            document.getElementById('userBadge').innerText = currentUser.username.toUpperCase();
+            document.getElementById('activeUserLabel').innerText = currentUser.username;
+            if (currentUser.role === 'admin') document.getElementById('mainTabAdmin').classList.remove('hidden');
+            renderDynamicForms();
+            loadHistory();
+        }
+
+        function logout() { localStorage.removeItem('jombay_session'); location.reload(); }
+
+        function goBackHome() {
+            switchMainTab('new');
+            switchSubTab(1);
+        }
+
+        function switchMainTab(tab) {
+            document.getElementById('viewNew').classList.add('hidden');
+            document.getElementById('viewHistory').classList.add('hidden');
+            document.getElementById('viewAdmin').classList.add('hidden');
+            if (tab === 'new') document.getElementById('viewNew').classList.remove('hidden');
+            if (tab === 'history') { document.getElementById('viewHistory').classList.remove('hidden'); loadHistory(); }
+            if (tab === 'admin') { document.getElementById('viewAdmin').classList.remove('hidden'); loadAdminUsers(); }
+        }
+
+        function saveMorningEntry() {
+            const date = document.getElementById('entryDate').value;
+            const cashMorning = parseFloat(document.getElementById('cashMorning').value) || 0;
+            let morningFloats = {};
+            let morningFloatTotal = 0;
+            const isSuper = currentUser.accountType === 'super';
+
+            NETWORKS_CONFIG.forEach(net => {
+                const sup = parseFloat(document.getElementById(`${net.id}Morning_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Morning_sub`).value) || 0) : 0;
+                morningFloats[net.id] = { super: sup, sub: sub };
+                morningFloatTotal += (sup + sub);
+            });
+
+            const morningTotal = cashMorning + morningFloatTotal;
+            let entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            
+            let existingIndex = entries.findIndex(e => e.date === date && e.username === currentUser.username);
+
+            if (existingIndex !== -1) {
+                entries[existingIndex].cashMorning = cashMorning;
+                entries[existingIndex].morningFloats = morningFloats;
+                entries[existingIndex].morningTotal = morningTotal;
+                entries[existingIndex].isMorningSaved = true;
+            } else {
+                entries.unshift({
+                    id: 'ENTRY_' + Date.now(),
+                    username: currentUser.username,
+                    accountType: currentUser.accountType,
+                    date: date,
+                    cashMorning: cashMorning,
+                    morningFloats: morningFloats,
+                    morningTotal: morningTotal,
+                    cashNight: 0,
+                    nightFloats: {},
+                    nightTotal: 0,
+                    transactions: [],
+                    totalComm: 0,
+                    deficitNotes: '',
+                    isMorningSaved: true,
+                    isCompleted: false
+                });
+            }
+            
+            localStorage.setItem('jombay_entries', JSON.stringify(entries));
+            alert('Mtaji wa Asubuhi umehifadhiwa salama!');
+            switchSubTab(2);
+        }
+
+        function checkAndPullMorningData() {
+            const date = document.getElementById('entryDate').value;
+            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);
+            const alertNotice = document.getElementById('morningAlertNotice');
+            const displayTotal = document.getElementById('displayPulledMorningTotal');
+
+            if (found) {
+                alertNotice.classList.add('hidden');
+                displayTotal.innerText = `TSH ${found.morningTotal.toLocaleString()}`;
+                
+                if(found.cashNight !== undefined) {
+                    document.getElementById('cashNight').value = found.cashNight > 0 ? found.cashNight : '';
+                }
+                if(found.nightFloats) {
+                    const isSuper = currentUser.accountType === 'super';
+                    NETWORKS_CONFIG.forEach(net => {
+                        if(found.nightFloats[net.id]) {
+                            const supInput = document.getElementById(`${net.id}Night_super`);
+                            if(supInput) supInput.value = found.nightFloats[net.id].super > 0 ? found.nightFloats[net.id].super : '';
+                            if(isSuper) {
+                                const subInput = document.getElementById(`${net.id}Night_sub`);
+                                if(subInput) subInput.value = found.nightFloats[net.id].sub > 0 ? found.nightFloats[net.id].sub : '';
+                            }
+                        }
+                    });
+                }
+                if(found.transactions) {
+                    activeTransactionsToday = [...found.transactions];
+                    renderTransactionsList();
+                }
+                if(found.deficitNotes) {
+                    document.getElementById('dailyDeficitNotes').value = found.deficitNotes;
+                }
+            } else {
+                alertNotice.classList.remove('hidden');
+                displayTotal.innerText = "TSH 0";
+                document.getElementById('cashNight').value = '';
+                activeTransactionsToday = [];
+                renderTransactionsList();
+            }
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            const date = document.getElementById('entryDate').value;
+            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);
+            
+            const cashMorning = found ? (found.cashMorning || 0) : 0;
+            const morningTotal = found ? found.morningTotal : 0;
+            let morningFloatTotal = 0;
+            if(found && found.morningFloats) {
+                Object.values(found.morningFloats).forEach(f => morningFloatTotal += (f.super + f.sub));
+            }
+
+            const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
+            let nightFloatTotal = 0;
+            const isSuper = currentUser.accountType === 'super';
+
+            NETWORKS_CONFIG.forEach(net => {
+                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
+                nightFloatTotal += (sup + sub);
+            });
+
+            const nightTotal = cashNight + nightFloatTotal;
+            let totalCommission = 0;
+            activeTransactionsToday.forEach(tx => totalCommission += tx.commission);
+
+            document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
+            document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`;
+            document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
+
+            const warningBox = document.getElementById('deficitWarningBox');
+            const warningTitle = document.getElementById('deficitWarningTitle');
+            const warningText = document.getElementById('deficitWarningText');
+
+            if (!found) {
+                warningBox.classList.add('hidden');
+                return;
+            }
+
+            const diffTotal = nightTotal - morningTotal;
+            const diffCash = cashNight - cashMorning;
+            const diffFloat = nightFloatTotal - morningFloatTotal;
+
+            warningBox.classList.remove('hidden');
+
+            if (diffTotal < 0) {
+                const upungufu = Math.abs(diffTotal);
+                warningBox.className = "p-4 rounded-xl space-y-2 bg-red-100 border-l-4 border-red-600 text-red-950 shadow-md";
+                warningTitle.innerHTML = `⚠️ TAHADHARI YA UPUNGUFU: Jumla ya Pesa Imepungua kwa TSH ${upungufu.toLocaleString()}`;
+                
+                let details = `<p>Salio lako la jumla la usiku ni dogo kuliko mtaji wa asubuhi.</p>`;
+                if (diffCash > 0 && diffFloat < 0) {
+                    details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Cash mkononi imeongezeka kwa TSH ${diffCash.toLocaleString()}, lakini Float kwenye mitandao imepungua kwa TSH ${Math.abs(diffFloat).toLocaleString()}. Hii inaonyesha baadhi ya pesa zimehamia kwenye Cash kutoka kwenye float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
+                } else if (diffCash < 0 && diffFloat > 0) {
+                    details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Float kwenye mitandao imeongezeka kwa TSH ${diffFloat.toLocaleString()}, lakini Cash mkononi imepungua kwa TSH ${Math.abs(diffCash).toLocaleString()}. Hii inaonyesha cash imetumika kuongeza float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
+                } else {
+                    details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Kagua mitandao yako pamoja na Cash mkononi kuona ni wapi pesa imepungua kabla ya kuhifadhi hesabu hii.</p>`;
+                }
+                warningText.innerHTML = details;
+
+            } else if (diffTotal === 0) {
+                warningBox.className = "p-4 rounded-xl space-y-2 bg-blue-100 border-l-4 border-blue-600 text-blue-950 shadow-md";
+                warningTitle.innerHTML = `⚖️ TAARIFA YA BALANSI: Mtaji Upo Sawa (Hakuna Upungufu)`;
+
+                if (diffCash > 0 && diffFloat < 0) {
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Cash imeongezeka kwa TSH ${diffCash.toLocaleString()} na Float imepungua kwa TSH ${Math.abs(diffFloat).toLocaleString()}. Pesa zimehamia kutoka kwenye float kwenda kwenye cash taslimu. Mtaji wako upo sahihi kabisa.</p>`;
+                } else if (diffCash < 0 && diffFloat > 0) {
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Float imeongezeka kwa TSH ${diffFloat.toLocaleString()} na Cash imepungua kwa TSH ${Math.abs(diffCash).toLocaleString()}. Cash imetumika kuongeza float kwenye mitandao. Mtaji wako upo sahihi kabisa.</p>`;
+                } else {
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Salio la usiku linalingana kikamilifu na mtaji wa asubuhi.</p>`;
+                }
+
+            } else {
+                warningBox.className = "p-4 rounded-xl space-y-2 bg-green-100 border-l-4 border-green-600 text-green-950 shadow-md";
+                warningTitle.innerHTML = `🎉 HONGERA: Mtaji Umeongezeka kwa TSH ${diffTotal.toLocaleString()}`;
+                warningText.innerHTML = `<p>Salio lako la usiku ni kubwa kuliko la asubuhi (Kuna ziada au faida kwenye mtaji wa leo).</p>`;
+            }
+        }
+
+        function saveEveningEntry() {
+            const date = document.getElementById('entryDate').value;
+            let entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            let foundIndex = entries.findIndex(e => e.date === date && e.username === currentUser.username);
+
+            if (foundIndex === -1) { alert('Hifadhi mtaji wa Asubuhi kwanza!'); switchSubTab(1); return; }
+
+            const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
+            let nightFloats = {};
+            let nightFloatTotal = 0;
+            const isSuper = currentUser.accountType === 'super';
+
+            NETWORKS_CONFIG.forEach(net => {
+                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
+                nightFloats[net.id] = { super: sup, sub: sub };
+                nightFloatTotal += (sup + sub);
+            });
+
+            const nightTotal = cashNight + nightFloatTotal;
+            const deficitNotes = document.getElementById('dailyDeficitNotes').value.trim();
+
+            if (nightTotal < entries[foundIndex].morningTotal && !deficitNotes) {
+                const ulitaka = confirm(`⚠️ TAARIFA YA UPUNGUFU:\nSalio la usiku ni dogo kuliko mtaji wa asubuhi kwa TSH ${(entries[foundIndex].morningTotal - nightTotal).toLocaleString()}.\n\nJe, una uhakika na unapenda kuhifadhi hesabu hii yenye upungufu?`);
+                if (!ulitaka) return;
+            }
+
+            let totalComm = 0;
+            activeTransactionsToday.forEach(t => totalComm += t.commission);
+
+            entries[foundIndex].cashNight = cashNight;
+            entries[foundIndex].nightFloats = nightFloats;
+            entries[foundIndex].nightTotal = nightTotal;
+            entries[foundIndex].transactions = [...activeTransactionsToday];
+            entries[foundIndex].totalComm = totalComm;
+            entries[foundIndex].deficitNotes = deficitNotes;
+            entries[foundIndex].isCompleted = true;
+
+            localStorage.setItem('jombay_entries', JSON.stringify(entries));
+            alert('Funga siku imehifadhiwa salama kwenye kumbukumbu!');
+            switchMainTab('history');
+        }
+
+        function loadHistory() {
+            const container = document.getElementById('historyContainer');
+            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            const userEntries = currentUser.role === 'admin' ? entries : entries.filter(e => e.username === currentUser.username);
+
+            if (userEntries.length === 0) { 
+                container.innerHTML = `<div class="bg-white p-6 rounded-xl text-center text-slate-500">Hakuna kumbukumbu zilizohifadhiwa bado.</div>`; 
+                return; 
+            }
+
+            let html = '';
+            userEntries.forEach(item => {
+                let statusBadge = '';
+                if (item.isCompleted) {
+                    if (item.nightTotal < item.morningTotal) {
+                        statusBadge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">Pungufu (-TSH ${(item.morningTotal - item.nightTotal).toLocaleString()})</span>`;
+                    } else if (item.nightTotal > item.morningTotal) {
+                        statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">Ziada (+TSH ${(item.nightTotal - item.morningTotal).toLocaleString()})</span>`;
+                    } else {
+                        statusBadge = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">Sawa (Balanced)</span>`;
+                    }
+                } else {
+                    statusBadge = `<span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">Asubuhi Tu (Haijakamilika)</span>`;
+                }
+
+                html += `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center text-sm">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <b>Tarehe: ${item.date}</b> | Wakala: <span class="text-blue-900 font-semibold">${item.username}</span>
+                                ${statusBadge}
+                            </div>
+                            <div class="text-xs text-slate-500 mt-1">
+                                Mtaji Asubuhi: TSH ${(item.morningTotal || 0).toLocaleString()} | Jumla Jioni: TSH ${(item.nightTotal || 0).toLocaleString()} | <span class="text-green-700 font-bold">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <button onclick="viewDetail('${item.id}')" class="bg-blue-50 text-blue-900 px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-100">Tazama & Chapisha</button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function viewDetail(id) {
+            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            const item = entries.find(e => e.id === id);
+            if (!item) return;
+
+            let txTableHtml = '';
+            if (item.transactions && item.transactions.length > 0) {
+                item.transactions.forEach(t => {
+                    txTableHtml += `
+                        <tr class="border-b">
+                            <td class="p-2"><b>${t.networkName}</b></td>
+                            <td class="p-2 uppercase font-semibold text-blue-900">${t.type}</td>
+                            <td class="p-2 text-right">TSH ${t.amount.toLocaleString()}</td>
+                            <td class="p-2 text-right text-green-700 font-bold">+TSH ${t.commission.toLocaleString()}</td>
+                        </tr>`;
+                });
+            } else {
+                txTableHtml = `<tr><td colspan="4" class="p-3 text-center text-slate-400">Hakuna miamala iliyorekodiwa kwa tarehe hii.</td></tr>`;
+            }
+
+            let floatTableHtml = '';
+            let totalMorningFloat = 0;
+            let totalNightFloat = 0;
+            const isSuperAccount = item.accountType === 'super';
+
+            NETWORKS_CONFIG.forEach(net => {
+                let mSuper = 0, mSub = 0, nSuper = 0, nSub = 0;
+
+                if (item.morningFloats && item.morningFloats[net.id]) {
+                    mSuper = item.morningFloats[net.id].super || 0;
+                    mSub = item.morningFloats[net.id].sub || 0;
+                }
+                if (item.nightFloats && item.nightFloats[net.id]) {
+                    nSuper = item.nightFloats[net.id].super || 0;
+                    nSub = item.nightFloats[net.id].sub || 0;
+                }
+
+                const mTotalNet = mSuper + mSub;
+                const nTotalNet = nSuper + nSub;
+
+                totalMorningFloat += mTotalNet;
+                totalNightFloat += nTotalNet;
+
+                if (isSuperAccount) {
+                    // Ikiwa ni Super Agent, inaonyesha mistari 2 iliyotenganishwa wazi kabisa kwenye Ripoti na Printing
+                    floatTableHtml += `
+                        <tr class="border-b bg-blue-50/70">
+                            <td class="p-2"><b>${net.name} - Float Asubuhi/Jioni (Super)</b></td>
+                            <td class="p-2 text-right font-semibold">TSH ${mSuper.toLocaleString()}</td>
+                            <td class="p-2 text-right font-semibold">TSH ${nSuper.toLocaleString()}</td>
+                        </tr>
+                        <tr class="border-b bg-white">
+                            <td class="p-2 text-slate-700 pl-4"><b>${net.name} - Float Asubuhi/Jioni (Sub Line)</b></td>
+                            <td class="p-2 text-right">TSH ${mSub.toLocaleString()}</td>
+                            <td class="p-2 text-right">TSH ${nSub.toLocaleString()}</td>
+                        </tr>`;
+                } else {
+                    floatTableHtml += `
+                        <tr class="border-b">
+                            <td class="p-2"><b>${net.name} (Float)</b></td>
+                            <td class="p-2 text-right">TSH ${mTotalNet.toLocaleString()}</td>
+                            <td class="p-2 text-right">TSH ${nTotalNet.toLocaleString()}</td>
+                        </tr>`;
+                }
+            });
+
+            const cashM = item.cashMorning || 0;
+            const cashN = item.cashNight || 0;
+            const grandMorningTotal = totalMorningFloat + cashM;
+            const grandNightTotal = totalNightFloat + cashN;
+
+            let deficitBanner = '';
+            if (item.isCompleted && item.nightTotal < item.morningTotal) {
+                deficitBanner = `<div class="bg-red-50 p-2 text-red-700 rounded border font-bold">⚠️ Taarifa ya Upungufu: Mtaji wa Asubuhi (TSH ${(item.morningTotal||0).toLocaleString()}) ulikuwa mkubwa kuliko Jumla ya Jioni (TSH ${(item.nightTotal||0).toLocaleString()}) kwa TSH ${(item.morningTotal - item.nightTotal).toLocaleString()}</div>`;
+            } else if (item.isCompleted && item.nightTotal > item.morningTotal) {
+                deficitBanner = `<div class="bg-green-50 p-2 text-green-700 rounded border font-bold">🎉 Taarifa ya Ziada: Jumla ya Jioni imezidi Mtaji wa Asubuhi kwa TSH ${(item.nightTotal - item.morningTotal).toLocaleString()}</div>`;
+            }
+
+            document.getElementById('modalTitle').innerText = `JOMBAY ENTERPRISES - Statement ya Tarehe: ${item.date}`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between border-b pb-2 text-xs">
+                        <span><b>Mtumiaji:</b> ${item.username}</span>
+                        <span><b>Aina ya Akaunti:</b> ${(item.accountType||'REGULAR').toUpperCase()}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border text-xs">
+                        <div><b>Jumla ya Mtaji Asubuhi:</b> TSH ${(item.morningTotal||0).toLocaleString()}</div>
+                        <div><b>Jumla ya Salio Jioni:</b> TSH ${(item.nightTotal||0).toLocaleString()}</div>
+                        <div class="col-span-2"><b>Jumla ya Kamisheni za Siku:</b> <span class="text-green-700 font-bold text-sm">TSH ${(item.totalComm||0).toLocaleString()}</span></div>
+                    </div>
+
+                    ${deficitBanner}
+
+                    ${item.deficitNotes ? `<div class="bg-amber-50 p-2 text-amber-900 rounded border"><b>Maelezo / Mhamo wa Pesa:</b> ${item.deficitNotes}</div>` : ''}
+
+                    <div>
+                        <h4 class="font-bold text-blue-900 mb-1 text-xs uppercase border-b pb-1">1. Uchambuzi wa Cash na Float Zote (Sub Line & Super Line Tofauti)</h4>
+                        <table class="w-full text-left border text-xs">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="p-2">Aina / Mtandao</th>
+                                    <th class="p-2 text-right">Float/Cash ya Asubuhi</th>
+                                    <th class="p-2 text-right">Float/Cash ya Jioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b bg-slate-50">
+                                    <td class="p-2"><b>Cash Taslimu (Mkononi)</b></td>
+                                    <td class="p-2 text-right font-bold">TSH ${cashM.toLocaleString()}</td>
+                                    <td class="p-2 text-right font-bold">TSH ${cashN.toLocaleString()}</td>
+                                </tr>
+                                ${floatTableHtml}
+                                <tr class="bg-blue-900 text-white font-bold">
+                                    <td class="p-2">TOTAL (JUMLA KUU)</td>
+                                    <td class="p-2 text-right">TSH ${grandMorningTotal.toLocaleString()}</td>
+                                    <td class="p-2 text-right">TSH ${grandNightTotal.toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-blue-900 mb-1 text-xs uppercase border-b pb-1">2. Jedwali la Miamala Yote Iliyofanyika</h4>
+                        <table class="w-full text-left border text-xs">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="p-2">Mtandao</th>
+                                    <th class="p-2">Aina</th>
+                                    <th class="p-2 text-right">Kiasi</th>
+                                    <th class="p-2 text-right">Kamisheni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${txTableHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+        function loadAdminUsers() {
+            const users = JSON.parse(localStorage.getItem('jombay_users')) || [];
+            let html = '';
+            users.forEach(u => { 
+                html += `
+                    <tr class="border-b text-xs">
+                        <td class="p-3 font-bold text-blue-900">${u.username}</td>
+                        <td class="p-3">${u.accountType}</td>
+                        <td class="p-3">${u.phone || '-'}</td>
+                        <td class="p-3 font-mono font-bold text-red-600 bg-red-50 rounded px-2">${u.password}</td>
+                    </tr>`; 
+            });
+            document.getElementById('adminUsersTable').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
