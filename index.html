@@ -67,7 +67,7 @@
                     <div class="p-4 bg-slate-50 text-xs space-y-3 border-t">
                         <div>
                             <p class="font-bold text-blue-900">1. Je, nifanye nini nikisahau Password yangu?</p>
-                            <p class="text-slate-600 mt-1">Unaweza kubonyeza kitufe cha "Umesahau Password?" hapo chini ya fomu ya kuingia ili kubadilisha papo hapo, au kuwasiliana na IT Msaidizi.</p>
+                            <p class="text-slate-600 mt-1">Bonyeza kitufe cha "Umesahau Password?" chini ya fomu ya kuingia ili kubadilisha papo hapo kwa kutumia namba yako ya simu.</p>
                         </div>
                         <div>
                             <p class="font-bold text-blue-900">2. Je, data zangu ziko salama?</p>
@@ -342,7 +342,7 @@
                     <div id="historyContainer" class="space-y-3"></div>
                 </div>
 
-                <!-- VIEW ADMIN (LINAONYESHA PASSWORD ZA WATUMIAJI WOTE) -->
+                <!-- VIEW ADMIN -->
                 <div id="viewAdmin" class="hidden space-y-6">
                     <div class="bg-amber-50 border p-4 rounded-xl font-bold text-amber-900 flex justify-between items-center">
                         <span>Admin Panel - Orodha ya Watumiaji na Password Zao</span>
@@ -573,7 +573,7 @@
             const phoneIn = document.getElementById('regPhone').value.trim();
             const typeIn = document.getElementById('regAccountType').value;
             const passIn = document.getElementById('regPassword').value.trim();
-            if (!userIn || !passIn || !phoneIn) { alert('Jaza sehemu zote muhimu.'); return; }
+            if (!userIn || !passIn || !phoneIn) { alert('Tafadhali jaza sehemu zote muhimu.'); return; }
             let users = JSON.parse(localStorage.getItem('jombay_users')) || [];
             if(users.some(u => u.username === userIn)) { alert('Username imeshatumika!'); return; }
             users.push({ username: userIn, email: emailIn, phone: phoneIn, password: passIn, role: 'user', accountType: typeIn });
