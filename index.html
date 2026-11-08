@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JOMBAY ENTERPRISES - Mfumo wa Uwakala</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -13,51 +12,44 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
 
-    <div id="app" class="max-w-4xl mx-auto pb-12">
+    <div class="max-w-4xl mx-auto pb-12">
         
         <!-- HEADER -->
-        <header class="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="font-bold text-xl tracking-wide text-yellow-400">JOMBAY ENTERPRISES</h1>
-                    <p class="text-xs text-blue-200">Mfumo wa Usimamizi wa Uwakala wa Fedha na Benki</p>
-                </div>
-                <div id="userInfoHeader" class="hidden text-right">
-                    <span id="userBadge" class="bg-blue-800 text-yellow-300 text-xs px-2 py-1 rounded font-semibold block"></span>
-                    <button onclick="logout()" class="text-xs text-red-300 hover:text-white mt-1 underline">Ondoka (Logout)</button>
-                </div>
+        <header class="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
+            <div>
+                <h1 class="font-bold text-xl text-yellow-400">JOMBAY ENTERPRISES</h1>
+                <p class="text-xs text-blue-200">Mfumo wa Usimamizi wa Uwakala</p>
+            </div>
+            <div id="userInfoHeader" class="hidden text-right">
+                <span id="userBadge" class="bg-blue-800 text-yellow-300 text-xs px-2 py-1 rounded font-semibold block"></span>
+                <button onclick="logout()" class="text-xs text-red-300 underline mt-1">Ondoka</button>
             </div>
         </header>
 
         <main class="p-4">
             
-            <!-- 1. LOGIN FORM -->
-            <div id="loginCard" class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-6 border border-slate-200">
-                <div class="text-center mb-6">
-                    <h2 class="text-2xl font-bold text-slate-800">Ingia Kwenye Akaunti</h2>
-                    <p class="text-xs text-slate-500">JOMBAY ENTERPRISES SYSTEM</p>
-                </div>
+            <!-- 1. LOGIN -->
+            <div id="loginCard" class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-6 border">
+                <h2 class="text-2xl font-bold text-slate-800 text-center mb-4">Ingia Kwenye Akaunti</h2>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
-                        <input type="text" id="loginUsername" placeholder="Ingiza username" class="w-full border rounded-lg p-2.5 text-sm outline-none">
+                        <input type="text" id="loginUsername" class="w-full border rounded-lg p-2.5 text-sm outline-none" placeholder="Username">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
-                        <input type="password" id="loginPassword" placeholder="Ingiza password" class="w-full border rounded-lg p-2.5 text-sm outline-none">
+                        <input type="password" id="loginPassword" class="w-full border rounded-lg p-2.5 text-sm outline-none" placeholder="Password">
                     </div>
-                    <button onclick="handleLogin()" class="w-full bg-blue-900 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-800 transition">Ingia (Login)</button>
+                    <button onclick="handleLogin()" class="w-full bg-blue-900 text-white font-semibold py-2.5 rounded-lg">Ingia (Login)</button>
                     <div class="text-center pt-2">
-                        <button onclick="showRegisterForm()" class="text-sm font-bold text-blue-900 hover:underline">Sajili Akaunti Mpya</button>
+                        <button onclick="showRegisterForm()" class="text-sm font-bold text-blue-900 underline">Sajili Akaunti Mpya</button>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. REGISTER FORM -->
-            <div id="registerCard" class="hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-6 border border-slate-200">
-                <div class="text-center mb-6">
-                    <h2 class="text-2xl font-bold text-slate-800">Usajili wa Wakala</h2>
-                </div>
+            <!-- 2. REGISTER -->
+            <div id="registerCard" class="hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-6 border">
+                <h2 class="text-2xl font-bold text-slate-800 text-center mb-4">Usajili wa Wakala</h2>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
@@ -93,7 +85,7 @@
             <div id="dashboardSection" class="hidden space-y-6">
 
                 <!-- MAIN TABS -->
-                <div class="flex border-b border-slate-200 bg-white rounded-t-lg px-2 pt-2 gap-2 shadow-sm">
+                <div class="flex border-b bg-white rounded-t-lg px-2 pt-2 gap-2 shadow-sm">
                     <button id="mainTabNew" onclick="switchMainTab('new')" class="px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900">Shughuli za Siku</button>
                     <button id="mainTabHistory" onclick="switchMainTab('history')" class="px-4 py-2 text-sm font-semibold text-slate-500">Kumbukumbu Zote</button>
                     <button id="mainTabAdmin" onclick="switchMainTab('admin')" class="hidden px-4 py-2 text-sm font-semibold text-amber-600">Admin Panel</button>
@@ -124,11 +116,11 @@
                         </div>
                     </div>
 
-                    <!-- 3 SUB TABS MPYA -->
+                    <!-- 3 SUB TABS -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-200 p-1.5 rounded-xl">
                         <button id="subTab1" onclick="switchSubTab(1)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow">1. Mtaji wa Asubuhi</button>
                         <button id="subTab2" onclick="switchSubTab(2)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">2. Funga Hesabu Jioni</button>
-                        <button id="subTab3" onclick="switchSubTab(3)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">3. Miamala (Kutuma & Kutoa Auto)</button>
+                        <button id="subTab3" onclick="switchSubTab(3)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">3. Miamala (Tuma & Toa Auto)</button>
                     </div>
 
                     <!-- SEHEMU YA 1: MTAJI WA ASUBUSHI -->
@@ -157,13 +149,11 @@
                             <div id="eveningFloatContainer" class="space-y-4 pt-2"></div>
                         </div>
 
-                        <!-- DEFICIT NOTES -->
                         <div class="bg-white rounded-xl border p-4 space-y-2 border-l-4 border-l-red-500">
                             <h3 class="font-bold text-slate-800 text-sm">Maelezo ya Tofauti / Mapungufu</h3>
                             <textarea id="dailyDeficitNotes" rows="3" placeholder="Andika maelezo ya ziada kama yapo..." class="w-full border rounded-lg p-2 text-sm"></textarea>
                         </div>
 
-                        <!-- SUMMARY CARD -->
                         <div class="bg-blue-900 text-white rounded-xl shadow-lg p-6 space-y-4">
                             <h3 class="font-bold text-yellow-400 text-base border-b border-blue-800 pb-2">Uchambuzi wa Salio la Siku</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -180,7 +170,7 @@
                         </div>
                     </div>
 
-                    <!-- SEHEMU YA 3: MIAMALA UNASO TUMA NA KUTOA AUTO -->
+                    <!-- SEHEMU YA 3: MIAMALA -->
                     <div id="section3" class="hidden space-y-6">
                         <div class="bg-white rounded-xl shadow-md border-2 border-blue-900 p-5 space-y-4">
                             <div class="bg-blue-900 text-white p-3 rounded-lg font-bold text-sm">Miamala Unazotuma na Kutoa (Auto Commission)</div>
@@ -250,18 +240,7 @@
         </main>
     </div>
 
-    <!-- MODAL -->
-    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 space-y-4">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-lg" id="modalTitle">Taarifa</h3>
-                <button onclick="closeModal()" class="text-slate-500 font-bold">Funga X</button>
-            </div>
-            <div id="modalBody" class="space-y-3 text-sm"></div>
-        </div>
-    </div>
-
-    <!-- JAVASCRIPT LOGIC -->
+    <!-- SCRIPT -->
     <script>
         const NETWORKS_CONFIG = [
             { id: 'airtel', name: 'Airtel Money', sendRate: 0.005, withdrawRate: 0.01 },
@@ -384,7 +363,7 @@
                 const typeLabel = tx.type === 'send' ? 'Kutuma' : 'Kutoa';
                 html += `
                     <div class="py-2 flex justify-between items-center text-xs">
-                        <div><b>${tx.networkName}</b> (${typeLabel}): TSH${tx.amount.toLocaleString()}</div>
+                        <div><b>${tx.networkName}</b> (${typeLabel}): TSH ${tx.amount.toLocaleString()}</div>
                         <div class="flex items-center gap-3">
                             <span class="text-green-700 font-bold">+TSH ${tx.commission.toLocaleString()}</span>
                             <button onclick="removeTransactionItem('${tx.id}')" class="text-red-500 font-bold">Ondoa</button>
@@ -476,7 +455,8 @@
             const isSuper = currentUser.accountType === 'super';
 
             NETWORKS_CONFIG.forEach(net => {
-                const sup = parseFloat(document.getElementById(`${net.id}Morning_super`).value) \vert{}\vert{} 0; const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Morning_sub`).value) || 0) : 0;
+                const sup = parseFloat(document.getElementById(`${net.id}Morning_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Morning_sub`).value) || 0) : 0;
                 morningFloats[net.id] = { super: sup, sub: sub };
                 morningFloatTotal += (sup + sub);
             });
@@ -515,9 +495,37 @@
 
             if (found) {
                 alertNotice.classList.add('hidden');
-                displayTotal.innerText = `TSH ${found.morningTotal.toLocaleString()}`; } else { alertNotice.classList.remove('hidden'); displayTotal.innerText = "TSH 0"; } calculateTotals(); }  function calculateTotals() { const date = document.getElementById('entryDate').value; const entries = JSON.parse(localStorage.getItem('jombay_entries')) \vert{}\vert{} []; const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved); const morningTotal = found ? found.morningTotal : 0;  const cashNight = parseFloat(document.getElementById('cashNight').value) \vert{}\vert{} 0; let nightFloatTotal = 0; const isSuper = currentUser.accountType === 'super';  NETWORKS_CONFIG.forEach(net => { const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
-                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) \vert{}\vert{} 0) : 0; nightFloatTotal += (sup + sub); });  const nightTotal = cashNight + nightFloatTotal; let totalCommission = 0; activeTransactionsToday.forEach(tx => totalCommission += tx.commission);  document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
-            document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`; document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
+                displayTotal.innerText = `TSH ${found.morningTotal.toLocaleString()}`;
+            } else {
+                alertNotice.classList.remove('hidden');
+                displayTotal.innerText = "TSH 0";
+            }
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            const date = document.getElementById('entryDate').value;
+            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);
+            const morningTotal = found ? found.morningTotal : 0;
+
+            const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
+            let nightFloatTotal = 0;
+            const isSuper = currentUser.accountType === 'super';
+
+            NETWORKS_CONFIG.forEach(net => {
+                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
+                nightFloatTotal += (sup + sub);
+            });
+
+            const nightTotal = cashNight + nightFloatTotal;
+            let totalCommission = 0;
+            activeTransactionsToday.forEach(tx => totalCommission += tx.commission);
+
+            document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
+            document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`;
+            document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
         }
 
         function saveEveningEntry() {
@@ -533,7 +541,8 @@
             const isSuper = currentUser.accountType === 'super';
 
             NETWORKS_CONFIG.forEach(net => {
-                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) \vert{}\vert{} 0; const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
+                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
                 nightFloats[net.id] = { super: sup, sub: sub };
                 nightFloatTotal += (sup + sub);
             });
@@ -564,22 +573,21 @@
                 html += `
                     <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center text-sm">
                         <div>
-                            <b>${item.date}</b> - Wakala:${item.username}
+                            <b>${item.date}</b> - Wakala: ${item.username}
                             <div class="text-xs text-slate-500">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</div>
                         </div>
-                        <button onclick="viewDetail('${item.id}')" class="bg-blue-50 text-blue-900 px-3 py-1 rounded text-xs font-semibold">Tazama</button>
                     </div>
                 `;
             });
             container.innerHTML = html;
         }
 
-        function viewDetail(id) {
-            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
-            const item = entries.find(e => e.id === id);
-            if (!item) return;
-
-            let txHtml = '';
-            if (item.transactions && item.transactions.length > 0) {
-                item.transactions.forEach(t => {
-                    txHtml += `<div class="text-xs border-b py-1">${t.networkName} -${t.type.toUpperCase()}: TSH
+        function loadAdminUsers() {
+            const users = JSON.parse(localStorage.getItem('jombay_users')) || [];
+            let html = '';
+            users.forEach(u => { html += `<tr class="border-b"><td class="p-3">${u.username}</td><td class="p-3">${u.accountType}</td><td class="p-3">${u.phone}</td></tr>`; });
+            document.getElementById('adminUsersTable').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
