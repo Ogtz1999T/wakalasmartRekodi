@@ -506,7 +506,7 @@
                 const typeLabel = tx.type === 'send' ? 'Kutuma' : 'Kutoa';
                 html += `
                     <div class="py-2 flex justify-between items-center text-xs">
-                        <div><b>${tx.networkName}</b> (${typeLabel}): TSH${tx.amount.toLocaleString()}</div>
+                        <div><b>${tx.networkName}</b> (${typeLabel}): TSH ${tx.amount.toLocaleString()}</div>
                         <div class="flex items-center gap-3">
                             <span class="text-green-700 font-bold">+TSH ${tx.commission.toLocaleString()}</span>
                             <button onclick="removeTransactionItem('${tx.id}')" class="text-red-500 font-bold">Ondoa</button>
@@ -649,7 +649,8 @@
             const isSuper = currentUser.accountType === 'super';
 
             NETWORKS_CONFIG.forEach(net => {
-                const sup = parseFloat(document.getElementById(`${net.id}Morning_super`).value) \vert{}\vert{} 0; const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Morning_sub`).value) || 0) : 0;
+                const sup = parseFloat(document.getElementById(`${net.id}Morning_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Morning_sub`).value) || 0) : 0;
                 morningFloats[net.id] = { super: sup, sub: sub };
                 morningFloatTotal += (sup + sub);
             });
@@ -698,12 +699,70 @@
 
             if (found) {
                 alertNotice.classList.add('hidden');
-                displayTotal.innerText = `TSH ${found.morningTotal.toLocaleString()}`;  if(found.cashNight !== undefined) { document.getElementById('cashNight').value = found.cashNight > 0 ? found.cashNight : ''; } if(found.nightFloats) { const isSuper = currentUser.accountType === 'super'; NETWORKS_CONFIG.forEach(net => { if(found.nightFloats[net.id]) { const supInput = document.getElementById(`${net.id}Night_super`);
+                displayTotal.innerText = `TSH ${found.morningTotal.toLocaleString()}`;
+                
+                if(found.cashNight !== undefined) {
+                    document.getElementById('cashNight').value = found.cashNight > 0 ? found.cashNight : '';
+                }
+                if(found.nightFloats) {
+                    const isSuper = currentUser.accountType === 'super';
+                    NETWORKS_CONFIG.forEach(net => {
+                        if(found.nightFloats[net.id]) {
+                            const supInput = document.getElementById(`${net.id}Night_super`);
                             if(supInput) supInput.value = found.nightFloats[net.id].super > 0 ? found.nightFloats[net.id].super : '';
                             if(isSuper) {
-                                const subInput = document.getElementById(`${net.id}Night_sub`); if(subInput) subInput.value = found.nightFloats[net.id].sub > 0 ? found.nightFloats[net.id].sub : ''; } } }); } if(found.transactions) { activeTransactionsToday = [...found.transactions]; renderTransactionsList(); } if(found.deficitNotes) { document.getElementById('dailyDeficitNotes').value = found.deficitNotes; } } else { alertNotice.classList.remove('hidden'); displayTotal.innerText = "TSH 0"; document.getElementById('cashNight').value = ''; activeTransactionsToday = []; renderTransactionsList(); } calculateTotals(); }  function calculateTotals() { const date = document.getElementById('entryDate').value; const entries = JSON.parse(localStorage.getItem('jombay_entries')) \vert{}\vert{} []; const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);  const cashMorning = found ? (found.cashMorning \vert{}\vert{} 0) : 0; const morningTotal = found ? found.morningTotal : 0; let morningFloatTotal = 0; if(found && found.morningFloats) { Object.values(found.morningFloats).forEach(f => morningFloatTotal += (f.super + f.sub)); }  const cashNight = parseFloat(document.getElementById('cashNight').value) \vert{}\vert{} 0; let nightFloatTotal = 0; const isSuper = currentUser.accountType === 'super';  NETWORKS_CONFIG.forEach(net => { const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
-                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) \vert{}\vert{} 0) : 0; nightFloatTotal += (sup + sub); });  const nightTotal = cashNight + nightFloatTotal; let totalCommission = 0; activeTransactionsToday.forEach(tx => totalCommission += tx.commission);  document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
-            document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`; document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
+                                const subInput = document.getElementById(`${net.id}Night_sub`);
+                                if(subInput) subInput.value = found.nightFloats[net.id].sub > 0 ? found.nightFloats[net.id].sub : '';
+                            }
+                        }
+                    });
+                }
+                if(found.transactions) {
+                    activeTransactionsToday = [...found.transactions];
+                    renderTransactionsList();
+                }
+                if(found.deficitNotes) {
+                    document.getElementById('dailyDeficitNotes').value = found.deficitNotes;
+                }
+            } else {
+                alertNotice.classList.remove('hidden');
+                displayTotal.innerText = "TSH 0";
+                document.getElementById('cashNight').value = '';
+                activeTransactionsToday = [];
+                renderTransactionsList();
+            }
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            const date = document.getElementById('entryDate').value;
+            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);
+            
+            const cashMorning = found ? (found.cashMorning || 0) : 0;
+            const morningTotal = found ? found.morningTotal : 0;
+            let morningFloatTotal = 0;
+            if(found && found.morningFloats) {
+                Object.values(found.morningFloats).forEach(f => morningFloatTotal += (f.super + f.sub));
+            }
+
+            const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
+            let nightFloatTotal = 0;
+            const isSuper = currentUser.accountType === 'super';
+
+            NETWORKS_CONFIG.forEach(net => {
+                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
+                nightFloatTotal += (sup + sub);
+            });
+
+            const nightTotal = cashNight + nightFloatTotal;
+            let totalCommission = 0;
+            activeTransactionsToday.forEach(tx => totalCommission += tx.commission);
+
+            document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
+            document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`;
+            document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
 
             const warningBox = document.getElementById('deficitWarningBox');
             const warningTitle = document.getElementById('deficitWarningTitle');
@@ -727,9 +786,9 @@
                 
                 let details = `<p>Salio lako la jumla la usiku ni dogo kuliko mtaji wa asubuhi.</p>`;
                 if (diffCash > 0 && diffFloat < 0) {
-                    details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Cash mkononi imeongezeka kwa TSH ${diffCash.toLocaleString()}, lakini Float kwenye mitandao imepungua kwa TSH${Math.abs(diffFloat).toLocaleString()}. Hii inaonyesha baadhi ya pesa zimehamia kwenye Cash kutoka kwenye float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
+                    details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Cash mkononi imeongezeka kwa TSH ${diffCash.toLocaleString()}, lakini Float kwenye mitandao imepungua kwa TSH ${Math.abs(diffFloat).toLocaleString()}. Hii inaonyesha baadhi ya pesa zimehamia kwenye Cash kutoka kwenye float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
                 } else if (diffCash < 0 && diffFloat > 0) {
-                    details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Float kwenye mitandao imeongezeka kwa TSH ${diffFloat.toLocaleString()}, lakini Cash mkononi imepungua kwa TSH${Math.abs(diffCash).toLocaleString()}. Hii inaonyesha cash imetumika kuongeza float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
+                    details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Float kwenye mitandao imeongezeka kwa TSH ${diffFloat.toLocaleString()}, lakini Cash mkononi imepungua kwa TSH ${Math.abs(diffCash).toLocaleString()}. Hii inaonyesha cash imetumika kuongeza float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
                 } else {
                     details += `<p class="font-semibold text-red-900">📌 UCHAMBUZI: Kagua mitandao yako pamoja na Cash mkononi kuona ni wapi pesa imepungua kabla ya kuhifadhi hesabu hii.</p>`;
                 }
@@ -740,9 +799,9 @@
                 warningTitle.innerHTML = `⚖️ TAARIFA YA BALANSI: Mtaji Upo Sawa (Hakuna Upungufu)`;
 
                 if (diffCash > 0 && diffFloat < 0) {
-                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Cash imeongezeka kwa TSH ${diffCash.toLocaleString()} na Float imepungua kwa TSH${Math.abs(diffFloat).toLocaleString()}. Pesa zimehamia kutoka kwenye float kwenda kwenye cash taslimu. Mtaji wako upo sahihi kabisa.</p>`;
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Cash imeongezeka kwa TSH ${diffCash.toLocaleString()} na Float imepungua kwa TSH ${Math.abs(diffFloat).toLocaleString()}. Pesa zimehamia kutoka kwenye float kwenda kwenye cash taslimu. Mtaji wako upo sahihi kabisa.</p>`;
                 } else if (diffCash < 0 && diffFloat > 0) {
-                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Float imeongezeka kwa TSH ${diffFloat.toLocaleString()} na Cash imepungua kwa TSH${Math.abs(diffCash).toLocaleString()}. Cash imetumika kuongeza float kwenye mitandao. Mtaji wako upo sahihi kabisa.</p>`;
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Float imeongezeka kwa TSH ${diffFloat.toLocaleString()} na Cash imepungua kwa TSH ${Math.abs(diffCash).toLocaleString()}. Cash imetumika kuongeza float kwenye mitandao. Mtaji wako upo sahihi kabisa.</p>`;
                 } else {
                     warningText.innerHTML = `<p><b>Uchambuzi:</b> Salio la usiku linalingana kikamilifu na mtaji wa asubuhi.</p>`;
                 }
@@ -767,7 +826,8 @@
             const isSuper = currentUser.accountType === 'super';
 
             NETWORKS_CONFIG.forEach(net => {
-                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) \vert{}\vert{} 0; const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
+                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
                 nightFloats[net.id] = { super: sup, sub: sub };
                 nightFloatTotal += (sup + sub);
             });
@@ -825,10 +885,11 @@
                     <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center text-sm">
                         <div>
                             <div class="flex items-center gap-2">
-                                <b>Tarehe: ${item.date}</b> | Wakala: <span class="text-blue-900 font-semibold">${item.username}</span>${statusBadge}
+                                <b>Tarehe: ${item.date}</b> | Wakala: <span class="text-blue-900 font-semibold">${item.username}</span>
+                                ${statusBadge}
                             </div>
                             <div class="text-xs text-slate-500 mt-1">
-                                Mtaji Asubuhi: TSH ${(item.morningTotal \vert{}\vert{} 0).toLocaleString()} \vert{} Jumla Jioni: TSH${(item.nightTotal || 0).toLocaleString()} | <span class="text-green-700 font-bold">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</span>
+                                Mtaji Asubuhi: TSH ${(item.morningTotal || 0).toLocaleString()} | Jumla Jioni: TSH ${(item.nightTotal || 0).toLocaleString()} | <span class="text-green-700 font-bold">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</span>
                             </div>
                         </div>
                         <button onclick="viewDetail('${item.id}')" class="bg-blue-50 text-blue-900 px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-100">Tazama & Chapisha</button>
@@ -884,4 +945,92 @@
 
             let deficitBanner = '';
             if (item.isCompleted && item.nightTotal < item.morningTotal) {
-                deficitBanner = `<div class="bg-red-50 p-2 text-red-700 rounded border font-bold">⚠️ Taarifa ya Upungufu: Mtaji wa Asubuhi (TSH ${(item.morningTotal||0).
+                deficitBanner = `<div class="bg-red-50 p-2 text-red-700 rounded border font-bold">⚠️ Taarifa ya Upungufu: Mtaji wa Asubuhi (TSH ${(item.morningTotal||0).toLocaleString()}) ulikuwa mkubwa kuliko Jumla ya Jioni (TSH ${(item.nightTotal||0).toLocaleString()}) kwa TSH ${(item.morningTotal - item.nightTotal).toLocaleString()}</div>`;
+            } else if (item.isCompleted && item.nightTotal > item.morningTotal) {
+                deficitBanner = `<div class="bg-green-50 p-2 text-green-700 rounded border font-bold">🎉 Taarifa ya Ziada: Jumla ya Jioni imezidi Mtaji wa Asubuhi kwa TSH ${(item.nightTotal - item.morningTotal).toLocaleString()}</div>`;
+            }
+
+            document.getElementById('modalTitle').innerText = `JOMBAY ENTERPRISES - Statement ya Tarehe: ${item.date}`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between border-b pb-2 text-xs">
+                        <span><b>Mtumiaji:</b> ${item.username}</span>
+                        <span><b>Aina ya Akaunti:</b> ${(item.accountType||'REGULAR').toUpperCase()}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border text-xs">
+                        <div><b>Jumla ya Mtaji Asubuhi:</b> TSH ${(item.morningTotal||0).toLocaleString()}</div>
+                        <div><b>Jumla ya Salio Jioni:</b> TSH ${(item.nightTotal||0).toLocaleString()}</div>
+                        <div class="col-span-2"><b>Jumla ya Kamisheni za Siku:</b> <span class="text-green-700 font-bold text-sm">TSH ${(item.totalComm||0).toLocaleString()}</span></div>
+                    </div>
+
+                    ${deficitBanner}
+
+                    ${item.deficitNotes ? `<div class="bg-amber-50 p-2 text-amber-900 rounded border"><b>Maelezo / Mhamo wa Pesa:</b> ${item.deficitNotes}</div>` : ''}
+
+                    <div>
+                        <h4 class="font-bold text-blue-900 mb-1 text-xs uppercase border-b pb-1">1. Uchambuzi wa Cash na Float za Mitandao</h4>
+                        <table class="w-full text-left border text-xs">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="p-2">Aina / Mtandao</th>
+                                    <th class="p-2 text-right">Float/Cash ya Asubuhi</th>
+                                    <th class="p-2 text-right">Float/Cash ya Jioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b bg-slate-50">
+                                    <td class="p-2"><b>Cash Taslimu (Mkononi)</b></td>
+                                    <td class="p-2 text-right">TSH ${cashM.toLocaleString()}</td>
+                                    <td class="p-2 text-right">TSH ${cashN.toLocaleString()}</td>
+                                </tr>
+                                ${floatTableHtml}
+                                <tr class="bg-blue-900 text-white font-bold">
+                                    <td class="p-2">TOTAL (JUMLA KUU)</td>
+                                    <td class="p-2 text-right">TSH ${grandMorningTotal.toLocaleString()}</td>
+                                    <td class="p-2 text-right">TSH ${grandNightTotal.toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-blue-900 mb-1 text-xs uppercase border-b pb-1">2. Jedwali la Miamala Yote Iliyofanyika</h4>
+                        <table class="w-full text-left border text-xs">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="p-2">Mtandao</th>
+                                    <th class="p-2">Aina</th>
+                                    <th class="p-2 text-right">Kiasi</th>
+                                    <th class="p-2 text-right">Kamisheni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${txTableHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+        function loadAdminUsers() {
+            const users = JSON.parse(localStorage.getItem('jombay_users')) || [];
+            let html = '';
+            users.forEach(u => { 
+                html += `
+                    <tr class="border-b text-xs">
+                        <td class="p-3 font-bold text-blue-900">${u.username}</td>
+                        <td class="p-3">${u.accountType}</td>
+                        <td class="p-3">${u.phone || '-'}</td>
+                        <td class="p-3 font-mono font-bold text-red-600 bg-red-50 rounded px-2">${u.password}</td>
+                    </tr>`; 
+            });
+            document.getElementById('adminUsersTable').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
