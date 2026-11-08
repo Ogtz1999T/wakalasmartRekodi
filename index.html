@@ -8,6 +8,12 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        @media print {
+            body * { visibility: hidden; }
+            #printableArea, #printableArea * { visibility: visible; }
+            #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -15,10 +21,16 @@
     <div class="max-w-4xl mx-auto pb-12">
         
         <!-- HEADER -->
-        <header class="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
-            <div>
-                <h1 class="font-bold text-xl text-yellow-400">JOMBAY ENTERPRISES</h1>
-                <p class="text-xs text-blue-200">Mfumo wa Usimamizi wa Uwakala</p>
+        <header class="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center no-print">
+            <div class="flex items-center gap-3">
+                <!-- KITUFE CHA KURUDI NYUMA KWENYE HEADER -->
+                <button id="globalBackBtn" onclick="goBackHome()" class="hidden bg-blue-800 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1">
+                    ← Rudi Nyuma
+                </button>
+                <div>
+                    <h1 class="font-bold text-xl text-yellow-400">JOMBAY ENTERPRISES</h1>
+                    <p class="text-xs text-blue-200">Mfumo wa Usimamizi wa Uwakala</p>
+                </div>
             </div>
             <div id="userInfoHeader" class="hidden text-right">
                 <span id="userBadge" class="bg-blue-800 text-yellow-300 text-xs px-2 py-1 rounded font-semibold block"></span>
@@ -49,7 +61,10 @@
 
             <!-- 2. REGISTER -->
             <div id="registerCard" class="hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-6 border">
-                <h2 class="text-2xl font-bold text-slate-800 text-center mb-4">Usajili wa Wakala</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-slate-800">Usajili wa Wakala</h2>
+                    <button onclick="showLoginForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-semibold">← Rudi Kwenye Login</button>
+                </div>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
@@ -84,11 +99,18 @@
             <!-- 3. DASHBOARD -->
             <div id="dashboardSection" class="hidden space-y-6">
 
-                <!-- MAIN TABS -->
-                <div class="flex border-b bg-white rounded-t-lg px-2 pt-2 gap-2 shadow-sm">
-                    <button id="mainTabNew" onclick="switchMainTab('new')" class="px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900">Shughuli za Siku</button>
-                    <button id="mainTabHistory" onclick="switchMainTab('history')" class="px-4 py-2 text-sm font-semibold text-slate-500">Kumbukumbu Zote</button>
-                    <button id="mainTabAdmin" onclick="switchMainTab('admin')" class="hidden px-4 py-2 text-sm font-semibold text-amber-600">Admin Panel</button>
+                <!-- MAIN TABS & BACK BUTTON -->
+                <div class="flex justify-between items-center bg-white rounded-t-lg px-2 pt-2 border-b shadow-sm no-print">
+                    <div class="flex gap-2">
+                        <button id="mainTabNew" onclick="switchMainTab('new')" class="px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900">Shughuli za Siku</button>
+                        <button id="mainTabHistory" onclick="switchMainTab('history')" class="px-4 py-2 text-sm font-semibold text-slate-500">Kumbukumbu Zote</button>
+                        <button id="mainTabAdmin" onclick="switchMainTab('admin')" class="hidden px-4 py-2 text-sm font-semibold text-amber-600">Admin Panel</button>
+                    </div>
+                    <div>
+                        <button onclick="switchMainTab('new')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
+                            ← Rudi Nyumbani
+                        </button>
+                    </div>
                 </div>
 
                 <!-- VIEW NEW -->
@@ -117,7 +139,7 @@
                     </div>
 
                     <!-- 3 SUB TABS -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-200 p-1.5 rounded-xl">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-200 p-1.5 rounded-xl no-print">
                         <button id="subTab1" onclick="switchSubTab(1)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow">1. Mtaji wa Asubuhi</button>
                         <button id="subTab2" onclick="switchSubTab(2)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">2. Funga Hesabu Jioni</button>
                         <button id="subTab3" onclick="switchSubTab(3)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">3. Miamala (Tuma & Toa Auto)</button>
@@ -135,6 +157,12 @@
 
                     <!-- SEHEMU YA 2: FUNGA HESABU JIONI -->
                     <div id="section2" class="hidden space-y-6">
+                        <!-- KITUFE CHA KURUDI SEHEMU YA 1 -->
+                        <div class="no-print">
+                            <button onclick="switchSubTab(1)" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
+                                ← Rudi Mtaji wa Asubuhi
+                            </button>
+                        </div>
                         <div class="bg-white rounded-xl shadow-md border p-5 space-y-4">
                             <div class="bg-indigo-900 text-white p-3 rounded-lg font-bold text-sm">Funga Hesabu za Jioni (Cash & Float Zilizobaki)</div>
                             <div id="morningAlertNotice" class="hidden bg-red-50 border p-3 rounded-lg text-xs text-red-700 font-semibold">⚠️ Hujajaza mtaji wa Asubuhi! Nenda sehemu ya 1 uhifadhi kwanza.</div>
@@ -172,6 +200,12 @@
 
                     <!-- SEHEMU YA 3: MIAMALA -->
                     <div id="section3" class="hidden space-y-6">
+                        <!-- KITUFE CHA KURUDI SEHEMU YA 2 -->
+                        <div class="no-print">
+                            <button onclick="switchSubTab(2)" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
+                                ← Rudi Funga Hesabu Jioni
+                            </button>
+                        </div>
                         <div class="bg-white rounded-xl shadow-md border-2 border-blue-900 p-5 space-y-4">
                             <div class="bg-blue-900 text-white p-3 rounded-lg font-bold text-sm">Miamala Unazotuma na Kutoa (Auto Commission)</div>
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -218,16 +252,19 @@
 
                 <!-- VIEW HISTORY -->
                 <div id="viewHistory" class="hidden space-y-4">
-                    <div class="bg-white p-4 rounded-xl border flex justify-between items-center">
-                        <h3 class="font-bold text-slate-800">Kumbukumbu Zote</h3>
-                        <button onclick="loadHistory()" class="bg-slate-200 px-3 py-1 rounded text-xs font-semibold">Onyesha Zote</button>
+                    <div class="bg-white p-4 rounded-xl border flex justify-between items-center no-print">
+                        <h3 class="font-bold text-slate-800">Kumbukumbu Zote Zisizofutika</h3>
+                        <button onclick="switchMainTab('new')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-semibold">← Rudi Shughuli za Siku</button>
                     </div>
                     <div id="historyContainer" class="space-y-3"></div>
                 </div>
 
                 <!-- VIEW ADMIN -->
                 <div id="viewAdmin" class="hidden space-y-6">
-                    <div class="bg-amber-50 border p-4 rounded-xl font-bold text-amber-900">Admin Panel</div>
+                    <div class="bg-amber-50 border p-4 rounded-xl font-bold text-amber-900 flex justify-between items-center">
+                        <span>Admin Panel</span>
+                        <button onclick="switchMainTab('new')" class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-xs font-semibold">← Rudi Nyumbani</button>
+                    </div>
                     <div class="bg-white rounded-xl border overflow-hidden">
                         <table class="w-full text-left text-sm">
                             <thead><tr class="bg-slate-100 text-xs"><th class="p-3">Username</th><th class="p-3">Aina</th><th class="p-3">Simu</th></tr></thead>
@@ -238,6 +275,22 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- MODAL FOR STATEMENT / DETAILS -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3 no-print">
+                <h3 class="font-bold text-lg" id="modalTitle">Taarifa ya Kina</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold">Chapisha Statement (Print)</button>
+                    <button onclick="closeModal()" class="text-slate-500 font-bold px-2">Funga X</button>
+                </div>
+            </div>
+            <div id="printableArea">
+                <div id="modalBody" class="space-y-3 text-sm"></div>
+            </div>
+        </div>
     </div>
 
     <!-- SCRIPT -->
@@ -414,6 +467,7 @@
             const passIn = document.getElementById('regPassword').value.trim();
             if (!userIn || !passIn) { alert('Jaza sehemu zote.'); return; }
             let users = JSON.parse(localStorage.getItem('jombay_users')) || [];
+            if(users.some(u => u.username === userIn)) { alert('Username imeshatumika!'); return; }
             users.push({ username: userIn, email: emailIn, phone: phoneIn, password: passIn, role: 'user', accountType: typeIn });
             localStorage.setItem('jombay_users', JSON.stringify(users));
             alert('Usajili umefanikiwa!'); showLoginForm();
@@ -429,6 +483,7 @@
             document.getElementById('registerCard').classList.add('hidden');
             document.getElementById('dashboardSection').classList.remove('hidden');
             document.getElementById('userInfoHeader').classList.remove('hidden');
+            document.getElementById('globalBackBtn').classList.remove('hidden');
             document.getElementById('userBadge').innerText = currentUser.username.toUpperCase();
             document.getElementById('activeUserLabel').innerText = currentUser.username;
             if (currentUser.role === 'admin') document.getElementById('mainTabAdmin').classList.remove('hidden');
@@ -437,6 +492,11 @@
         }
 
         function logout() { localStorage.removeItem('jombay_session'); location.reload(); }
+
+        function goBackHome() {
+            switchMainTab('new');
+            switchSubTab(1);
+        }
 
         function switchMainTab(tab) {
             document.getElementById('viewNew').classList.add('hidden');
@@ -482,7 +542,7 @@
                 });
             }
             localStorage.setItem('jombay_entries', JSON.stringify(entries));
-            alert('Mtaji wa Asubuhi umehifadhiwa!');
+            alert('Mtaji wa Asubuhi umehifadhiwa salama!');
             switchSubTab(2);
         }
 
@@ -559,33 +619,74 @@
             found.isCompleted = true;
 
             localStorage.setItem('jombay_entries', JSON.stringify(entries));
-            alert('Funga siku imekamilika!');
+            alert('Funga siku imehifadhiwa kabisa na haitafutika!');
             switchMainTab('history');
         }
 
         function loadHistory() {
             const container = document.getElementById('historyContainer');
             const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
-            if (entries.length === 0) { container.innerHTML = `<div class="bg-white p-6 rounded-xl text-center text-slate-500">Hakuna kumbukumbu.</div>`; return; }
+            const userEntries = currentUser.role === 'admin' ? entries : entries.filter(e => e.username === currentUser.username);
+
+            if (userEntries.length === 0) { 
+                container.innerHTML = `<div class="bg-white p-6 rounded-xl text-center text-slate-500">Hakuna kumbukumbu zilizohifadhiwa bado.</div>`; 
+                return; 
+            }
 
             let html = '';
-            entries.forEach(item => {
+            userEntries.forEach(item => {
                 html += `
                     <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center text-sm">
                         <div>
-                            <b>${item.date}</b> - Wakala: ${item.username}
-                            <div class="text-xs text-slate-500">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</div>
+                            <b>Tarehe: ${item.date}</b> | Wakala: <span class="text-blue-900 font-semibold">${item.username}</span>
+                            <div class="text-xs text-slate-500 mt-1">
+                                Mtaji: TSH ${(item.morningTotal || 0).toLocaleString()} | Salio Usiku: TSH ${(item.nightTotal || 0).toLocaleString()} | <span class="text-green-700 font-bold">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</span>
+                            </div>
                         </div>
+                        <button onclick="viewDetail('${item.id}')" class="bg-blue-50 text-blue-900 px-3 py-1.5 rounded text-xs font-semibold hover:bg-blue-100">Tazama & Chapisha</button>
                     </div>
                 `;
             });
             container.innerHTML = html;
         }
 
+        function viewDetail(id) {
+            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
+            const item = entries.find(e => e.id === id);
+            if (!item) return;
+
+            let txHtml = '';
+            if (item.transactions && item.transactions.length > 0) {
+                item.transactions.forEach(t => {
+                    txHtml += `<div class="text-xs border-b py-1.5 flex justify-between"><span><b>${t.networkName}</b> (${t.type.toUpperCase()}): TSH ${t.amount.toLocaleString()}</span> <span class="text-green-700 font-bold">+TSH ${t.commission.toLocaleString()}</span></div>`;
+                });
+            } else {
+                txHtml = `<p class="text-xs text-slate-400">Hakuna miamala iliyorekodiwa kwa tarehe hii.</p>`;
+            }
+
+            document.getElementById('modalTitle').innerText = `JOMBAY ENTERPRISES - Statement ya Tarehe: ${item.date}`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="space-y-3 text-xs border p-4 rounded-lg bg-slate-50">
+                    <div class="flex justify-between border-b pb-2"><span><b>Mtumiaji:</b> ${item.username}</span><span><b>Aina:</b> ${(item.accountType||'REGULAR').toUpperCase()}</span></div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><b>Mtaji Asubuhi:</b> TSH ${(item.morningTotal||0).toLocaleString()}</div>
+                        <div><b>Salio Usiku:</b> TSH ${(item.nightTotal||0).toLocaleString()}</div>
+                    </div>
+                    <div><b>Jumla ya Kamisheni za Siku:</b> <span class="text-green-700 font-bold text-sm">TSH ${(item.totalComm||0).toLocaleString()}</span></div>
+                    ${item.deficitNotes ? `<div class="bg-red-50 p-2 text-red-700 rounded border"><b>Maelezo / Mapungufu:</b> ${item.deficitNotes}</div>` : ''}
+                    <div class="border-t pt-2 font-bold text-slate-700">Orodha ya Miamala (Kutuma na Kutoa):</div>
+                    <div class="space-y-1">${txHtml}</div>
+                </div>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
         function loadAdminUsers() {
             const users = JSON.parse(localStorage.getItem('jombay_users')) || [];
             let html = '';
-            users.forEach(u => { html += `<tr class="border-b"><td class="p-3">${u.username}</td><td class="p-3">${u.accountType}</td><td class="p-3">${u.phone}</td></tr>`; });
+            users.forEach(u => { html += `<tr class="header-b border-b"><td class="p-3">${u.username}</td><td class="p-3">${u.accountType}</td><td class="p-3">${u.phone}</td></tr>`; });
             document.getElementById('adminUsersTable').innerHTML = html;
         }
     </script>
