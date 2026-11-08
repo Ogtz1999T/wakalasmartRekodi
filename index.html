@@ -6,8 +6,6 @@
     <title>JOMBAY ENTERPRISES - Mfumo wa Uwakala</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -94,7 +92,7 @@
             <!-- 3. DASHBOARD -->
             <div id="dashboardSection" class="hidden space-y-6">
 
-                <!-- TABS -->
+                <!-- MAIN TABS -->
                 <div class="flex border-b border-slate-200 bg-white rounded-t-lg px-2 pt-2 gap-2 shadow-sm">
                     <button id="mainTabNew" onclick="switchMainTab('new')" class="px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900">Shughuli za Siku</button>
                     <button id="mainTabHistory" onclick="switchMainTab('history')" class="px-4 py-2 text-sm font-semibold text-slate-500">Kumbukumbu Zote</button>
@@ -126,14 +124,15 @@
                         </div>
                     </div>
 
-                    <!-- SUB TABS -->
-                    <div class="flex bg-slate-200 p-1 rounded-xl gap-2">
-                        <button id="subTabMorning" onclick="switchSubTab('morning')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-blue-900 text-white shadow">1. Mtaji wa Asubuhi</button>
-                        <button id="subTabEvening" onclick="switchSubTab('evening')" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-white text-slate-600 shadow">2. Miamala & Funga Jioni</button>
+                    <!-- 3 SUB TABS MPYA -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-200 p-1.5 rounded-xl">
+                        <button id="subTab1" onclick="switchSubTab(1)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow">1. Mtaji wa Asubuhi</button>
+                        <button id="subTab2" onclick="switchSubTab(2)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">2. Funga Hesabu Jioni</button>
+                        <button id="subTab3" onclick="switchSubTab(3)" class="py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow">3. Miamala (Kutuma & Kutoa Auto)</button>
                     </div>
 
-                    <!-- MORNING -->
-                    <div id="sectionMorning" class="space-y-6">
+                    <!-- SEHEMU YA 1: MTAJI WA ASUBUSHI -->
+                    <div id="section1" class="space-y-6">
                         <div class="bg-white rounded-xl shadow-sm border p-4">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Cash Taslimu (Asubuhi)</label>
                             <input type="number" id="cashMorning" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold outline-none">
@@ -142,56 +141,18 @@
                         <button onclick="saveMorningEntry()" class="w-full bg-blue-900 text-white font-bold py-3.5 rounded-lg">Hifadhi Mtaji wa Asubuhi</button>
                     </div>
 
-                    <!-- EVENING / TRANSACTIONS -->
-                    <div id="sectionEvening" class="hidden space-y-6">
-                        
-                        <!-- MIAMALA -->
-                        <div class="bg-white rounded-xl shadow-md border-2 border-blue-900 p-5 space-y-4">
-                            <div class="bg-blue-900 text-white p-3 rounded-lg font-bold text-sm">Sehemu ya Miamala (Kutuma na Kutoa - Auto Commission)</div>
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Mtandao</label>
-                                    <select id="txNetworkSelect" class="w-full border rounded-lg p-2.5 text-sm bg-white font-semibold text-blue-900"></select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Aina</label>
-                                    <select id="txTypeSelect" onchange="updateCommissionPreview()" class="w-full border rounded-lg p-2.5 text-sm bg-white font-semibold">
-                                        <option value="withdraw">Kutoa (Withdraw)</option>
-                                        <option value="send">Kutuma (Send)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kiasi (TSH)</label>
-                                    <input type="number" id="txAmountInput" oninput="updateCommissionPreview()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kamisheni (Auto)</label>
-                                    <input type="number" id="txCommissionInput" placeholder="0" class="w-full border border-green-300 bg-green-50 rounded-lg p-2.5 text-sm font-bold text-green-800">
-                                </div>
-                            </div>
-                            <button onclick="addTransactionItem()" class="w-full bg-blue-900 text-white font-bold py-2.5 rounded-lg text-sm">Ongeza Muamala Huu</button>
-                            <div class="border rounded-lg overflow-hidden mt-3">
-                                <div class="bg-slate-100 p-2.5 font-bold text-slate-700 text-xs flex justify-between">
-                                    <span>Miamala ya Leo:</span>
-                                    <span id="txCountBadge" class="bg-blue-900 text-white px-2 py-0.5 rounded text-[10px]">0</span>
-                                </div>
-                                <div id="transactionsListContainer" class="p-3 divide-y">
-                                    <p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- FUNGA HESABU JIONI -->
+                    <!-- SEHEMU YA 2: FUNGA HESABU JIONI -->
+                    <div id="section2" class="hidden space-y-6">
                         <div class="bg-white rounded-xl shadow-md border p-5 space-y-4">
                             <div class="bg-indigo-900 text-white p-3 rounded-lg font-bold text-sm">Funga Hesabu za Jioni (Cash & Float Zilizobaki)</div>
-                            <div id="morningAlertNotice" class="hidden bg-red-50 border p-3 rounded-lg text-xs text-red-700 font-semibold">⚠️ Hujajaza mtaji wa Asubuhi!</div>
+                            <div id="morningAlertNotice" class="hidden bg-red-50 border p-3 rounded-lg text-xs text-red-700 font-semibold">⚠️ Hujajaza mtaji wa Asubuhi! Nenda sehemu ya 1 uhifadhi kwanza.</div>
                             <div class="bg-slate-50 p-3 rounded-lg border flex justify-between text-xs">
-                                <span>Mtaji wa Asubuhi:</span>
+                                <span>Mtaji wa Asubuhi (Umevutwa):</span>
                                 <b id="displayPulledMorningTotal" class="text-blue-900 text-sm">TSH 0</b>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 mb-1">Cash ya Usiku Mkononi (TSH)</label>
-                                <input type="number" id="cashNight" oninput="calculateEveningTotals()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
+                                <input type="number" id="cashNight" oninput="calculateTotals()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
                             </div>
                             <div id="eveningFloatContainer" class="space-y-4 pt-2"></div>
                         </div>
@@ -199,29 +160,70 @@
                         <!-- DEFICIT NOTES -->
                         <div class="bg-white rounded-xl border p-4 space-y-2 border-l-4 border-l-red-500">
                             <h3 class="font-bold text-slate-800 text-sm">Maelezo ya Tofauti / Mapungufu</h3>
-                            <textarea id="dailyDeficitNotes" rows="3" placeholder="Andika maelezo..." class="w-full border rounded-lg p-2 text-sm"></textarea>
+                            <textarea id="dailyDeficitNotes" rows="3" placeholder="Andika maelezo ya ziada kama yapo..." class="w-full border rounded-lg p-2 text-sm"></textarea>
                         </div>
 
-                        <!-- SUMMARY -->
+                        <!-- SUMMARY CARD -->
                         <div class="bg-blue-900 text-white rounded-xl shadow-lg p-6 space-y-4">
-                            <h3 class="font-bold text-yellow-400 text-base border-b border-blue-800 pb-2">Uchambuzi na Jumla ya Kamisheni</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <h3 class="font-bold text-yellow-400 text-base border-b border-blue-800 pb-2">Uchambuzi wa Salio la Siku</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div class="bg-blue-800 p-3 rounded-lg">
                                     <span class="text-xs text-blue-200 block">Mtaji Asubuhi:</span>
                                     <span id="summaryMorningTotal" class="text-lg font-bold">TSH 0</span>
                                 </div>
                                 <div class="bg-blue-800 p-3 rounded-lg">
-                                    <span class="text-xs text-blue-200 block">Salio Usiku:</span>
+                                    <span class="text-xs text-blue-200 block">Salio Usiku (Cash + Float):</span>
                                     <span id="summaryNightTotal" class="text-lg font-bold">TSH 0</span>
                                 </div>
-                                <div class="bg-green-800 p-3 rounded-lg">
-                                    <span class="text-xs text-green-200 block">Jumla ya Kamisheni:</span>
-                                    <span id="summaryTotalCommission" class="text-xl font-extrabold text-yellow-300">TSH 0</span>
-                                </div>
                             </div>
-                            <button onclick="saveEveningEntry()" class="w-full bg-yellow-400 text-blue-950 font-bold py-3.5 rounded-lg text-base">Kamilisha na Hifadhi Ripoti</button>
+                            <button onclick="saveEveningEntry()" class="w-full bg-yellow-400 text-blue-950 font-bold py-3.5 rounded-lg text-base">Kamilisha na Hifadhi Funga Siku</button>
                         </div>
                     </div>
+
+                    <!-- SEHEMU YA 3: MIAMALA UNASO TUMA NA KUTOA AUTO -->
+                    <div id="section3" class="hidden space-y-6">
+                        <div class="bg-white rounded-xl shadow-md border-2 border-blue-900 p-5 space-y-4">
+                            <div class="bg-blue-900 text-white p-3 rounded-lg font-bold text-sm">Miamala Unazotuma na Kutoa (Auto Commission)</div>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Mtandao</label>
+                                    <select id="txNetworkSelect" class="w-full border rounded-lg p-2.5 text-sm bg-white font-semibold text-blue-900"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Aina ya Muamala</label>
+                                    <select id="txTypeSelect" onchange="updateCommissionPreview()" class="w-full border rounded-lg p-2.5 text-sm bg-white font-semibold">
+                                        <option value="withdraw">Kutoa (Withdraw)</option>
+                                        <option value="send">Kutuma (Send)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kiasi cha Pesa (TSH)</label>
+                                    <input type="number" id="txAmountInput" oninput="updateCommissionPreview()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kamisheni (Auto %)</label>
+                                    <input type="number" id="txCommissionInput" placeholder="0" class="w-full border border-green-300 bg-green-50 rounded-lg p-2.5 text-sm font-bold text-green-800">
+                                </div>
+                            </div>
+                            <button onclick="addTransactionItem()" class="w-full bg-blue-900 text-white font-bold py-2.5 rounded-lg text-sm">Ongeza Muamala Huu</button>
+
+                            <div class="border rounded-lg overflow-hidden mt-3">
+                                <div class="bg-slate-100 p-2.5 font-bold text-slate-700 text-xs flex justify-between items-center">
+                                    <span>Miamala Iliyorekodiwa:</span>
+                                    <span id="txCountBadge" class="bg-blue-900 text-white px-2 py-0.5 rounded text-[10px]">0</span>
+                                </div>
+                                <div id="transactionsListContainer" class="p-3 divide-y">
+                                    <p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-green-900 text-white p-4 rounded-xl flex justify-between items-center">
+                                <span class="font-semibold text-sm">Jumla ya Kamisheni za Miamala Leo:</span>
+                                <span id="summaryTotalCommission" class="text-xl font-extrabold text-yellow-300">TSH 0</span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- VIEW HISTORY -->
@@ -259,7 +261,7 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT -->
+    <!-- JAVASCRIPT LOGIC -->
     <script>
         const NETWORKS_CONFIG = [
             { id: 'airtel', name: 'Airtel Money', sendRate: 0.005, withdrawRate: 0.01 },
@@ -293,6 +295,28 @@
             checkExistingSession();
             document.getElementById('entryDate').addEventListener('change', checkAndPullMorningData);
         };
+
+        function switchSubTab(num) {
+            document.getElementById('section1').classList.add('hidden');
+            document.getElementById('section2').classList.add('hidden');
+            document.getElementById('section3').classList.add('hidden');
+
+            document.getElementById('subTab1').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+            document.getElementById('subTab2').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+            document.getElementById('subTab3').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+
+            if (num === 1) {
+                document.getElementById('section1').classList.remove('hidden');
+                document.getElementById('subTab1').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+            } else if (num === 2) {
+                document.getElementById('section2').classList.remove('hidden');
+                document.getElementById('subTab2').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+                checkAndPullMorningData();
+            } else if (num === 3) {
+                document.getElementById('section3').classList.remove('hidden');
+                document.getElementById('subTab3').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+            }
+        }
 
         function populateNetworkSelect() {
             const select = document.getElementById('txNetworkSelect');
@@ -337,13 +361,13 @@
             document.getElementById('txAmountInput').value = '';
             document.getElementById('txCommissionInput').value = '';
             renderTransactionsList();
-            calculateEveningTotals();
+            calculateTotals();
         }
 
         function removeTransactionItem(id) {
             activeTransactionsToday = activeTransactionsToday.filter(t => t.id !== id);
             renderTransactionsList();
-            calculateEveningTotals();
+            calculateTotals();
         }
 
         function renderTransactionsList() {
@@ -360,35 +384,15 @@
                 const typeLabel = tx.type === 'send' ? 'Kutuma' : 'Kutoa';
                 html += `
                     <div class="py-2 flex justify-between items-center text-xs">
-                        <div><b>${tx.networkName}</b> (${typeLabel}): TSH ${tx.amount.toLocaleString()}</div>
+                        <div><b>${tx.networkName}</b> (${typeLabel}): TSH${tx.amount.toLocaleString()}</div>
                         <div class="flex items-center gap-3">
-                            <span class="text-green-700 font-bold">+${tx.commission.toLocaleString()}</span>
+                            <span class="text-green-700 font-bold">+TSH ${tx.commission.toLocaleString()}</span>
                             <button onclick="removeTransactionItem('${tx.id}')" class="text-red-500 font-bold">Ondoa</button>
                         </div>
                     </div>
                 `;
             });
             container.innerHTML = html;
-        }
-
-        function switchSubTab(sub) {
-            const btnMorning = document.getElementById('subTabMorning');
-            const btnEvening = document.getElementById('subTabEvening');
-            const secMorning = document.getElementById('sectionMorning');
-            const secEvening = document.getElementById('sectionEvening');
-
-            if (sub === 'morning') {
-                btnMorning.className = "flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-blue-900 text-white shadow";
-                btnEvening.className = "flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-white text-slate-600 shadow";
-                secMorning.classList.remove('hidden');
-                secEvening.classList.add('hidden');
-            } else {
-                btnEvening.className = "flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-blue-900 text-white shadow";
-                btnMorning.className = "flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-white text-slate-600 shadow";
-                secEvening.classList.remove('hidden');
-                secMorning.classList.add('hidden');
-                checkAndPullMorningData();
-            }
         }
 
         function renderDynamicForms() {
@@ -405,8 +409,8 @@
                 if(isSuper) mHtml += `<div class="mt-2"><label class="block text-xs text-slate-600 mb-1">Float Asubuhi (Sub Line)</label><input type="number" id="${net.id}Morning_sub" placeholder="0" class="w-full border rounded p-2 text-sm bg-slate-50"></div>`;
                 morningCont.innerHTML += `<div class="p-4 bg-white rounded-xl border"><h4 class="font-bold text-blue-900 mb-2 text-sm">${net.name}</h4>${mHtml}</div>`;
 
-                let eHtml = `<div><label class="block text-xs text-slate-600 mb-1">Float Usiku ${isSuper ? '(Super)' : ''}</label><input type="number" id="${net.id}Night_super" oninput="calculateEveningTotals()" placeholder="0" class="w-full border rounded p-2 text-sm"></div>`;
-                if(isSuper) eHtml += `<div><label class="block text-xs text-slate-600 mb-1">Float Usiku (Sub Line)</label><input type="number" id="${net.id}Night_sub" oninput="calculateEveningTotals()" placeholder="0" class="w-full border rounded p-2 text-sm bg-slate-50"></div>`;
+                let eHtml = `<div><label class="block text-xs text-slate-600 mb-1">Float Usiku ${isSuper ? '(Super)' : ''}</label><input type="number" id="${net.id}Night_super" oninput="calculateTotals()" placeholder="0" class="w-full border rounded p-2 text-sm"></div>`;
+                if(isSuper) eHtml += `<div><label class="block text-xs text-slate-600 mb-1">Float Usiku (Sub Line)</label><input type="number" id="${net.id}Night_sub" oninput="calculateTotals()" placeholder="0" class="w-full border rounded p-2 text-sm bg-slate-50"></div>`;
                 eveningCont.innerHTML += `<div class="p-3 bg-slate-50 rounded-lg border"><h4 class="font-bold text-blue-900 mb-2 text-sm">${net.name}</h4><div class="grid grid-cols-1 ${isSuper?'md:grid-cols-2':''} gap-2">${eHtml}</div></div>`;
             });
         }
@@ -472,8 +476,7 @@
             const isSuper = currentUser.accountType === 'super';
 
             NETWORKS_CONFIG.forEach(net => {
-                const sup = parseFloat(document.getElementById(`${net.id}Morning_super`).value) || 0;
-                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Morning_sub`).value) || 0) : 0;
+                const sup = parseFloat(document.getElementById(`${net.id}Morning_super`).value) \vert{}\vert{} 0; const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Morning_sub`).value) || 0) : 0;
                 morningFloats[net.id] = { super: sup, sub: sub };
                 morningFloatTotal += (sup + sub);
             });
@@ -500,7 +503,7 @@
             }
             localStorage.setItem('jombay_entries', JSON.stringify(entries));
             alert('Mtaji wa Asubuhi umehifadhiwa!');
-            switchSubTab('evening');
+            switchSubTab(2);
         }
 
         function checkAndPullMorningData() {
@@ -512,37 +515,9 @@
 
             if (found) {
                 alertNotice.classList.add('hidden');
-                displayTotal.innerText = `TSH ${found.morningTotal.toLocaleString()}`;
-            } else {
-                alertNotice.classList.remove('hidden');
-                displayTotal.innerText = "TSH 0";
-            }
-            calculateEveningTotals();
-        }
-
-        function calculateEveningTotals() {
-            const date = document.getElementById('entryDate').value;
-            const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
-            const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);
-            const morningTotal = found ? found.morningTotal : 0;
-
-            const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
-            let nightFloatTotal = 0;
-            const isSuper = currentUser.accountType === 'super';
-
-            NETWORKS_CONFIG.forEach(net => {
-                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
-                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
-                nightFloatTotal += (sup + sub);
-            });
-
-            const nightTotal = cashNight + nightFloatTotal;
-            let totalCommission = 0;
-            activeTransactionsToday.forEach(tx => totalCommission += tx.commission);
-
-            document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
-            document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`;
-            document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
+                displayTotal.innerText = `TSH ${found.morningTotal.toLocaleString()}`; } else { alertNotice.classList.remove('hidden'); displayTotal.innerText = "TSH 0"; } calculateTotals(); }  function calculateTotals() { const date = document.getElementById('entryDate').value; const entries = JSON.parse(localStorage.getItem('jombay_entries')) \vert{}\vert{} []; const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved); const morningTotal = found ? found.morningTotal : 0;  const cashNight = parseFloat(document.getElementById('cashNight').value) \vert{}\vert{} 0; let nightFloatTotal = 0; const isSuper = currentUser.accountType === 'super';  NETWORKS_CONFIG.forEach(net => { const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
+                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) \vert{}\vert{} 0) : 0; nightFloatTotal += (sup + sub); });  const nightTotal = cashNight + nightFloatTotal; let totalCommission = 0; activeTransactionsToday.forEach(tx => totalCommission += tx.commission);  document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
+            document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`; document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
         }
 
         function saveEveningEntry() {
@@ -550,7 +525,7 @@
             let entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
             let found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);
 
-            if (!found) { alert('Hifadhi mtaji wa Asubuhi kwanza!'); switchSubTab('morning'); return; }
+            if (!found) { alert('Hifadhi mtaji wa Asubuhi kwanza!'); switchSubTab(1); return; }
 
             const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
             let nightFloats = {};
@@ -558,8 +533,7 @@
             const isSuper = currentUser.accountType === 'super';
 
             NETWORKS_CONFIG.forEach(net => {
-                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) || 0;
-                const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
+                const sup = parseFloat(document.getElementById(`${net.id}Night_super`).value) \vert{}\vert{} 0; const sub = isSuper ? (parseFloat(document.getElementById(`${net.id}Night_sub`).value) || 0) : 0;
                 nightFloats[net.id] = { super: sup, sub: sub };
                 nightFloatTotal += (sup + sub);
             });
@@ -590,7 +564,7 @@
                 html += `
                     <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center text-sm">
                         <div>
-                            <b>${item.date}</b> - Wakala: ${item.username}
+                            <b>${item.date}</b> - Wakala:${item.username}
                             <div class="text-xs text-slate-500">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</div>
                         </div>
                         <button onclick="viewDetail('${item.id}')" class="bg-blue-50 text-blue-900 px-3 py-1 rounded text-xs font-semibold">Tazama</button>
@@ -608,32 +582,4 @@
             let txHtml = '';
             if (item.transactions && item.transactions.length > 0) {
                 item.transactions.forEach(t => {
-                    txHtml += `<div class="text-xs border-b py-1">${t.networkName} - ${t.type.toUpperCase()}: TSH ${t.amount.toLocaleString()} (Kamisheni: +${t.commission})</div>`;
-                });
-            } else {
-                txHtml = `<p class="text-xs text-slate-400">Hakuna miamala.</p>`;
-            }
-
-            document.getElementById('modalTitle').innerText = `Ripoti: ${item.date} (${item.username})`;
-            document.getElementById('modalBody').innerHTML = `
-                <div class="space-y-3 text-xs">
-                    <div><b>Mtaji Asubuhi:</b> TSH ${(item.morningTotal||0).toLocaleString()}</div>
-                    <div><b>Salio Usiku:</b> TSH ${(item.nightTotal||0).toLocaleString()}</div>
-                    <div><b>Jumla Kamisheni:</b> TSH ${(item.totalComm||0).toLocaleString()}</div>
-                    <div class="border-t pt-2 font-bold">Miamala:</div>
-                    ${txHtml}
-                </div>
-            `;
-            document.getElementById('detailModal').classList.remove('hidden');
-        }
-
-        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
-        function loadAdminUsers() {
-            const users = JSON.parse(localStorage.getItem('jombay_users')) || [];
-            let html = '';
-            users.forEach(u => { html += `<tr class="border-b"><td class="p-3">${u.username}</td><td class="p-3">${u.accountType}</td><td class="p-3">${u.phone}</td></tr>`; });
-            document.getElementById('adminUsersTable').innerHTML = html;
-        }
-    </script>
-</body>
-</html>
+                    txHtml += `<div class="text-xs border-b py-1">${t.networkName} -${t.type.toUpperCase()}: TSH
