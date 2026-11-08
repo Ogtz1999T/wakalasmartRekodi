@@ -23,7 +23,6 @@
         <!-- HEADER -->
         <header class="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center no-print">
             <div class="flex items-center gap-3">
-                <!-- KITUFE CHA KURUDI NYUMA KWENYE HEADER -->
                 <button id="globalBackBtn" onclick="goBackHome()" class="hidden bg-blue-800 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1">
                     ← Rudi Nyuma
                 </button>
@@ -157,7 +156,6 @@
 
                     <!-- SEHEMU YA 2: FUNGA HESABU JIONI -->
                     <div id="section2" class="hidden space-y-6">
-                        <!-- KITUFE CHA KURUDI SEHEMU YA 1 -->
                         <div class="no-print">
                             <button onclick="switchSubTab(1)" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
                                 ← Rudi Mtaji wa Asubuhi
@@ -177,9 +175,15 @@
                             <div id="eveningFloatContainer" class="space-y-4 pt-2"></div>
                         </div>
 
+                        <!-- TAARIFA YA ONYO LA UPUNGUFU (DEFICIT ALERT BOX) -->
+                        <div id="deficitWarningBox" class="hidden bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl space-y-1">
+                            <h4 class="font-bold text-amber-900 text-xs flex items-center gap-1">⚠️ TAHADHARI: Mtaji Umepungua!</h4>
+                            <p id="deficitWarningText" class="text-xs text-amber-800"></p>
+                        </div>
+
                         <div class="bg-white rounded-xl border p-4 space-y-2 border-l-4 border-l-red-500">
-                            <h3 class="font-bold text-slate-800 text-sm">Maelezo ya Tofauti / Mapungufu</h3>
-                            <textarea id="dailyDeficitNotes" rows="3" placeholder="Andika maelezo ya ziada kama yapo..." class="w-full border rounded-lg p-2 text-sm"></textarea>
+                            <h3 class="font-bold text-slate-800 text-sm">Maelezo ya Tofauti / Mapungufu (Kama una uhakika na upungufu andika hapa)</h3>
+                            <textarea id="dailyDeficitNotes" rows="3" placeholder="Eleza kwa nini kuna upungufu (k.m. kutoa huduma, kupungua kwa mtandao fulani, n.k.)..." class="w-full border rounded-lg p-2 text-sm"></textarea>
                         </div>
 
                         <div class="bg-blue-900 text-white rounded-xl shadow-lg p-6 space-y-4">
@@ -200,7 +204,6 @@
 
                     <!-- SEHEMU YA 3: MIAMALA -->
                     <div id="section3" class="hidden space-y-6">
-                        <!-- KITUFE CHA KURUDI SEHEMU YA 2 -->
                         <div class="no-print">
                             <button onclick="switchSubTab(2)" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
                                 ← Rudi Funga Hesabu Jioni
@@ -586,6 +589,18 @@
             document.getElementById('summaryMorningTotal').innerText = `TSH ${morningTotal.toLocaleString()}`;
             document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`;
             document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
+
+            // Kagua kama kuna upungufu (Deficit check)
+            const warningBox = document.getElementById('deficitWarningBox');
+            const warningText = document.getElementById('deficitWarningText');
+
+            if (found && nightTotal < morningTotal) {
+                const upungufu = morningTotal - nightTotal;
+                warningBox.classList.remove('hidden');
+                warningText.innerHTML = `Salio lako la usiku ni dogo kuliko Mtaji wa Asubuhi kwa <b>TSH ${upungufu.toLocaleString()}</b>. Tafadhali kagua mitandao au cash kuona ni wapi kumepungua. Kama una uhakika,andika maelezo chini kisha uhifadhi.`;
+            } else {
+                warningBox.classList.add('hidden');
+            }
         }
 
         function saveEveningEntry() {
@@ -607,19 +622,28 @@
                 nightFloatTotal += (sup + sub);
             });
 
+            const nightTotal = cashNight + nightFloatTotal;
+            const deficitNotes = document.getElementById('dailyDeficitNotes').value.trim();
+
+            // Kama kuna upungufu na mtumiaji hajaweka maelezo, mtahadharishe lakini mruhusu aendelee akiwa na uhakika
+            if (nightTotal < found.morningTotal && !deficitNotes) {
+                const ulitaka = confirm(`⚠️ UPO WAKATI WA UPUNGUFU:\nSalio la usiku ni dogo kuliko mtaji wa asubuhi kwa TSH ${(found.morningTotal - nightTotal).toLocaleString()}.\n\nJe, una uhakika na unapenda kuhifadhi hesabu hii yenye upungufu?`);
+                if (!ulitaka) return;
+            }
+
             let totalComm = 0;
             activeTransactionsToday.forEach(t => totalComm += t.commission);
 
             found.cashNight = cashNight;
             found.nightFloats = nightFloats;
-            found.nightTotal = cashNight + nightFloatTotal;
+            found.nightTotal = nightTotal;
             found.transactions = [...activeTransactionsToday];
             found.totalComm = totalComm;
-            found.deficitNotes = document.getElementById('dailyDeficitNotes').value.trim();
+            found.deficitNotes = deficitNotes;
             found.isCompleted = true;
 
             localStorage.setItem('jombay_entries', JSON.stringify(entries));
-            alert('Funga siku imehifadhiwa kabisa na haitafutika!');
+            alert('Funga siku imehifadhiwa salama kwenye kumbukumbu!');
             switchMainTab('history');
         }
 
@@ -635,10 +659,22 @@
 
             let html = '';
             userEntries.forEach(item => {
+                let statusBadge = '';
+                if (item.isCompleted) {
+                    if (item.nightTotal < item.morningTotal) {
+                        statusBadge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">Pungufu (-TSH ${(item.morningTotal - item.nightTotal).toLocaleString()})</span>`;
+                    } else {
+                        statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">Imekamilika</span>`;
+                    }
+                }
+
                 html += `
                     <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center text-sm">
                         <div>
-                            <b>Tarehe: ${item.date}</b> | Wakala: <span class="text-blue-900 font-semibold">${item.username}</span>
+                            <div class="flex items-center gap-2">
+                                <b>Tarehe: ${item.date}</b> | Wakala: <span class="text-blue-900 font-semibold">${item.username}</span>
+                                ${statusBadge}
+                            </div>
                             <div class="text-xs text-slate-500 mt-1">
                                 Mtaji: TSH ${(item.morningTotal || 0).toLocaleString()} | Salio Usiku: TSH ${(item.nightTotal || 0).toLocaleString()} | <span class="text-green-700 font-bold">Kamisheni: TSH ${(item.totalComm || 0).toLocaleString()}</span>
                             </div>
@@ -664,6 +700,11 @@
                 txHtml = `<p class="text-xs text-slate-400">Hakuna miamala iliyorekodiwa kwa tarehe hii.</p>`;
             }
 
+            let deficitBanner = '';
+            if (item.nightTotal < item.morningTotal) {
+                deficitBanner = `<div class="bg-red-50 p-2 text-red-700 rounded border"><b>⚠️ Upungufu:</b> Mtaji wa Asubuhi (TSH ${(item.morningTotal||0).toLocaleString()}) ulikuwa mkubwa kuliko Salio la Usiku (TSH ${(item.nightTotal||0).toLocaleString()}) kwa TSH ${(item.morningTotal - item.nightTotal).toLocaleString()}</div>`;
+            }
+
             document.getElementById('modalTitle').innerText = `JOMBAY ENTERPRISES - Statement ya Tarehe: ${item.date}`;
             document.getElementById('modalBody').innerHTML = `
                 <div class="space-y-3 text-xs border p-4 rounded-lg bg-slate-50">
@@ -673,7 +714,8 @@
                         <div><b>Salio Usiku:</b> TSH ${(item.nightTotal||0).toLocaleString()}</div>
                     </div>
                     <div><b>Jumla ya Kamisheni za Siku:</b> <span class="text-green-700 font-bold text-sm">TSH ${(item.totalComm||0).toLocaleString()}</span></div>
-                    ${item.deficitNotes ? `<div class="bg-red-50 p-2 text-red-700 rounded border"><b>Maelezo / Mapungufu:</b> ${item.deficitNotes}</div>` : ''}
+                    ${deficitBanner}
+                    ${item.deficitNotes ? `<div class="bg-amber-50 p-2 text-amber-800 rounded border"><b>Maelezo / Sababu ya Upungufu:</b> ${item.deficitNotes}</div>` : ''}
                     <div class="border-t pt-2 font-bold text-slate-700">Orodha ya Miamala (Kutuma na Kutoa):</div>
                     <div class="space-y-1">${txHtml}</div>
                 </div>
@@ -686,7 +728,7 @@
         function loadAdminUsers() {
             const users = JSON.parse(localStorage.getItem('jombay_users')) || [];
             let html = '';
-            users.forEach(u => { html += `<tr class="header-b border-b"><td class="p-3">${u.username}</td><td class="p-3">${u.accountType}</td><td class="p-3">${u.phone}</td></tr>`; });
+            users.forEach(u => { html += `<tr class="border-b"><td class="p-3">${u.username}</td><td class="p-3">${u.accountType}</td><td class="p-3">${u.phone}</td></tr>`; });
             document.getElementById('adminUsersTable').innerHTML = html;
         }
     </script>
