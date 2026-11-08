@@ -44,7 +44,7 @@
 
         <main class="p-4 space-y-6">
             
-            <!-- FAIDA NA FAQ -->
+            <!-- FAIDA NA FAQ (ZIMEJICHOFA KABLA YA KUBONYEZWA) -->
             <div id="landingInfoSection" class="max-w-md mx-auto space-y-4 no-print">
                 <details class="bg-blue-900 text-white rounded-xl shadow-md border border-blue-800 overflow-hidden">
                     <summary class="p-4 font-bold text-sm text-yellow-300 cursor-pointer flex justify-between items-center bg-blue-900 hover:bg-blue-800">
@@ -92,8 +92,8 @@
                     <button onclick="handleLogin()" class="w-full bg-blue-900 text-white font-semibold py-2.5 rounded-lg">Ingia (Login)</button>
                     
                     <div class="flex justify-between items-center pt-2 text-xs">
-                        <button onclick="showRegisterForm()" class="font-bold text-blue-900 underline">Sajili Akaunti Mpya</button>
-                        <button onclick="showForgotPasswordForm()" class="font-bold text-red-600 underline">Umesahau Password?</button>
+                        <button type="button" onclick="showRegisterForm()" class="font-bold text-blue-900 underline">Sajili Akaunti Mpya</button>
+                        <button type="button" onclick="showForgotPasswordForm()" class="font-bold text-red-600 underline">Umesahau Password?</button>
                     </div>
                 </div>
 
@@ -105,11 +105,11 @@
                 </div>
             </div>
 
-            <!-- 2. FORGOT PASSWORD -->
+            <!-- 2. FORGOT PASSWORD (KUBADILI PASSWORD UKISAHAU) -->
             <div id="forgotPasswordCard" class="hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 border">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold text-slate-800">Badili Password Yako</h2>
-                    <button onclick="showLoginForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-semibold">← Rudi Login</button>
+                    <button type="button" onclick="showLoginForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-semibold">← Rudi Login</button>
                 </div>
                 <div class="space-y-4">
                     <div>
@@ -132,7 +132,7 @@
             <div id="registerCard" class="hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 border">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-slate-800">Usajili wa Wakala</h2>
-                    <button onclick="showLoginForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-semibold">← Rudi Kwenye Login</button>
+                    <button type="button" onclick="showLoginForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded text-xs font-semibold">← Rudi Kwenye Login</button>
                 </div>
                 <div class="space-y-4">
                     <div>
@@ -160,7 +160,7 @@
                     </div>
                     <button onclick="handleRegisterSubmit()" class="w-full bg-green-600 text-white font-bold py-2.5 rounded-lg">Kamilisha Usajili</button>
                     <div class="text-center pt-2">
-                        <button onclick="showLoginForm()" class="text-xs text-slate-500 underline">Unayo akaunti? Ingia</button>
+                        <button type="button" onclick="showLoginForm()" class="text-xs text-slate-500 underline">Unayo akaunti? Ingia</button>
                     </div>
                 </div>
 
@@ -178,8 +178,8 @@
                 <!-- MAIN TABS & BACK BUTTON -->
                 <div class="flex justify-between items-center bg-white rounded-t-lg px-2 pt-2 border-b shadow-sm no-print">
                     <div class="flex gap-2">
-                        <button id="mainTabNew" onclick="switchMainTab('new')" class="px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900">Shughuli za Siku</button>
-                        <button id="mainTabHistory" onclick="switchMainTab('history')" class="px-4 py-2 text-sm font-semibold text-slate-500">Kumbukumbu Zote</button>
+                        <button onclick="switchMainTab('new')" class="px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900">Shughuli za Siku</button>
+                        <button onclick="switchMainTab('history')" class="px-4 py-2 text-sm font-semibold text-slate-500">Kumbukumbu Zote</button>
                         <button id="mainTabAdmin" onclick="switchMainTab('admin')" class="hidden px-4 py-2 text-sm font-semibold text-amber-600">Admin Panel</button>
                     </div>
                     <div>
@@ -537,6 +537,7 @@
             });
         }
 
+        // VITENDO VYA KUBADILI FOMU (IMETENGENEZWA HIVI ILI ZISIKWAME TENA)
         function showRegisterForm() { 
             document.getElementById('loginCard').classList.add('hidden'); 
             document.getElementById('forgotPasswordCard').classList.add('hidden');
@@ -573,9 +574,11 @@
             const phoneIn = document.getElementById('regPhone').value.trim();
             const typeIn = document.getElementById('regAccountType').value;
             const passIn = document.getElementById('regPassword').value.trim();
-            if (!userIn || !passIn || !phoneIn) { alert('Tafadhali jaza sehemu zote muhimu.'); return; }
+            
+            if (!userIn || !passIn || !phoneIn) { alert('Tafadhali jaza taarifa zote muhimu.'); return; }
             let users = JSON.parse(localStorage.getItem('jombay_users')) || [];
             if(users.some(u => u.username === userIn)) { alert('Username imeshatumika!'); return; }
+            
             users.push({ username: userIn, email: emailIn, phone: phoneIn, password: passIn, role: 'user', accountType: typeIn });
             localStorage.setItem('jombay_users', JSON.stringify(users));
             alert('Usajili umefanikiwa! Sasa unaweza kuingia.'); 
@@ -598,7 +601,7 @@
             if (userIndex !== -1) {
                 users[userIndex].password = newPass;
                 localStorage.setItem('jombay_users', JSON.stringify(users));
-                alert('Password imebadilishwa mafanikio! Sasa unaweza kuingia.');
+                alert('Password imebadilishwa kikamilifu! Sasa unaweza kuingia.');
                 showLoginForm();
             } else {
                 alert('Username au Namba ya Simu havikidhi au havilingani na zilizopo kwenye mfumo.');
@@ -943,7 +946,7 @@
                 totalNightFloat += nTotalNet;
 
                 if (isSuperAccount) {
-                    // Ikiwa ni Super Agent, inaonyesha mistari 2 iliyotenganishwa wazi kabisa kwenye Ripoti na Printing
+                    // Ikiwa ni Super Agent, inatenganisha wazi mistari ya Super Line na Sub Line ili ijulikane kwenye ripoti
                     floatTableHtml += `
                         <tr class="border-b bg-blue-50/70">
                             <td class="p-2"><b>${net.name} - Float Asubuhi/Jioni (Super)</b></td>
