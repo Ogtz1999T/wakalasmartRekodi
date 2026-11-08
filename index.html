@@ -161,6 +161,13 @@
                                 ← Rudi Mtaji wa Asubuhi
                             </button>
                         </div>
+
+                        <!-- UCHAMBUZI NA TAHADHARI KUBWA JUU KABISA -->
+                        <div id="deficitWarningBox" class="hidden p-4 rounded-xl space-y-2 border-l-4 shadow-md">
+                            <h4 id="deficitWarningTitle" class="font-bold text-sm flex items-center gap-1"></h4>
+                            <div id="deficitWarningText" class="text-xs space-y-1 leading-relaxed"></div>
+                        </div>
+
                         <div class="bg-white rounded-xl shadow-md border p-5 space-y-4">
                             <div class="bg-indigo-900 text-white p-3 rounded-lg font-bold text-sm">Funga Hesabu za Jioni (Cash & Float Zilizobaki)</div>
                             <div id="morningAlertNotice" class="hidden bg-red-50 border p-3 rounded-lg text-xs text-red-700 font-semibold">⚠️ Hujajaza mtaji wa Asubuhi! Nenda sehemu ya 1 uhifadhi kwanza.</div>
@@ -175,15 +182,9 @@
                             <div id="eveningFloatContainer" class="space-y-4 pt-2"></div>
                         </div>
 
-                        <!-- TAARIFA YA ONYO LA UPUNGUFU (DEFICIT ALERT BOX) -->
-                        <div id="deficitWarningBox" class="hidden bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl space-y-1">
-                            <h4 class="font-bold text-amber-900 text-xs flex items-center gap-1">⚠️ TAHADHARI: Mtaji Umepungua!</h4>
-                            <p id="deficitWarningText" class="text-xs text-amber-800"></p>
-                        </div>
-
-                        <div class="bg-white rounded-xl border p-4 space-y-2 border-l-4 border-l-red-500">
-                            <h3 class="font-bold text-slate-800 text-sm">Maelezo ya Tofauti / Mapungufu (Kama una uhakika na upungufu andika hapa)</h3>
-                            <textarea id="dailyDeficitNotes" rows="3" placeholder="Eleza kwa nini kuna upungufu (k.m. kutoa huduma, kupungua kwa mtandao fulani, n.k.)..." class="w-full border rounded-lg p-2 text-sm"></textarea>
+                        <div class="bg-white rounded-xl border p-4 space-y-2 border-l-4 border-l-blue-900">
+                            <h3 class="font-bold text-slate-800 text-sm">Maelezo ya Tofauti / Mapungufu / Mhamo wa Pesa</h3>
+                            <textarea id="dailyDeficitNotes" rows="3" placeholder="Andika maelezo kwa nini cash au float imepungua au kuongezeka..." class="w-full border rounded-lg p-2 text-sm"></textarea>
                         </div>
 
                         <div class="bg-blue-900 text-white rounded-xl shadow-lg p-6 space-y-4">
@@ -570,7 +571,13 @@
             const date = document.getElementById('entryDate').value;
             const entries = JSON.parse(localStorage.getItem('jombay_entries')) || [];
             const found = entries.find(e => e.date === date && e.username === currentUser.username && e.isMorningSaved);
+            
+            const cashMorning = found ? (found.cashMorning || 0) : 0;
             const morningTotal = found ? found.morningTotal : 0;
+            let morningFloatTotal = 0;
+            if(found && found.morningFloats) {
+                Object.values(found.morningFloats).forEach(f => morningFloatTotal += (f.super + f.sub));
+            }
 
             const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
             let nightFloatTotal = 0;
@@ -590,16 +597,53 @@
             document.getElementById('summaryNightTotal').innerText = `TSH ${nightTotal.toLocaleString()}`;
             document.getElementById('summaryTotalCommission').innerText = `TSH ${totalCommission.toLocaleString()}`;
 
-            // Kagua kama kuna upungufu (Deficit check)
+            // Kagua uchambuzi na uweke tahadhari juu kabisa
             const warningBox = document.getElementById('deficitWarningBox');
+            const warningTitle = document.getElementById('deficitWarningTitle');
             const warningText = document.getElementById('deficitWarningText');
 
-            if (found && nightTotal < morningTotal) {
-                const upungufu = morningTotal - nightTotal;
-                warningBox.classList.remove('hidden');
-                warningText.innerHTML = `Salio lako la usiku ni dogo kuliko Mtaji wa Asubuhi kwa <b>TSH ${upungufu.toLocaleString()}</b>. Tafadhali kagua mitandao au cash kuona ni wapi kumepungua. Kama una uhakika,andika maelezo chini kisha uhifadhi.`;
-            } else {
+            if (!found) {
                 warningBox.classList.add('hidden');
+                return;
+            }
+
+            const diffTotal = nightTotal - morningTotal;
+            const diffCash = cashNight - cashMorning;
+            const diffFloat = nightFloatTotal - morningFloatTotal;
+
+            warningBox.classList.remove('hidden');
+
+            if (diffTotal < 0) {
+                const upungufu = Math.abs(diffTotal);
+                warningBox.className = "p-4 rounded-xl space-y-2 bg-red-50 border-l-4 border-red-500 text-red-900 shadow-md";
+                warningTitle.innerHTML = `⚠️ TAHADHARI YA UPUNGUFU: Jumla ya Pesa Imepungua kwa TSH ${upungufu.toLocaleString()}`;
+                
+                let details = `<p>Salio lako la jumla la usiku ni dogo kuliko mtaji wa asubuhi.</p>`;
+                if (diffCash > 0 && diffFloat < 0) {
+                    details += `<p class="font-semibold text-red-800">📌 UCHAMBUZI: Cash mkononi imeongezeka kwa TSH ${diffCash.toLocaleString()}, lakini Float kwenye mitandao imepungua kwa TSH ${Math.abs(diffFloat).toLocaleString()}. Hii inaonyesha baadhi ya pesa zimehamia kwenye Cash kutoka kwenye float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
+                } else if (diffCash < 0 && diffFloat > 0) {
+                    details += `<p class="font-semibold text-red-800">📌 UCHAMBUZI: Float kwenye mitandao imeongezeka kwa TSH ${diffFloat.toLocaleString()}, lakini Cash mkononi imepungua kwa TSH ${Math.abs(diffCash).toLocaleString()}. Hii inaonyesha cash imetumika kuongeza float, lakini bado kuna upungufu wa jumla wa TSH ${upungufu.toLocaleString()}!</p>`;
+                } else {
+                    details += `<p class="font-semibold text-red-800">📌 UCHAMBUZI: Kagua mitandao yako pamoja na Cash mkononi kuona ni wapi pesa imepungua kabla ya kuhifadhi hesabu hii.</p>`;
+                }
+                warningText.innerHTML = details;
+
+            } else if (diffTotal === 0) {
+                warningBox.className = "p-4 rounded-xl space-y-2 bg-blue-50 border-l-4 border-blue-600 text-blue-900 shadow-md";
+                warningTitle.innerHTML = `⚖️ TAARIFA YA BALANSI: Mtaji Upo Sawa (Hakuna Upungufu)`;
+
+                if (diffCash > 0 && diffFloat < 0) {
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Cash imeongezeka kwa TSH ${diffCash.toLocaleString()} na Float imepungua kwa TSH ${Math.abs(diffFloat).toLocaleString()}. Pesa zimehamia kutoka kwenye float kwenda kwenye cash taslimu. Mtaji wako upo sahihi kabisa.</p>`;
+                } else if (diffCash < 0 && diffFloat > 0) {
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Float imeongezeka kwa TSH ${diffFloat.toLocaleString()} na Cash imepungua kwa TSH ${Math.abs(diffCash).toLocaleString()}. Cash imetumika kuongeza float kwenye mitandao. Mtaji wako upo sahihi kabisa.</p>`;
+                } else {
+                    warningText.innerHTML = `<p><b>Uchambuzi:</b> Salio la usiku linalingana kikamilifu na mtaji wa asubuhi.</p>`;
+                }
+
+            } else {
+                warningBox.className = "p-4 rounded-xl space-y-2 bg-green-50 border-l-4 border-green-600 text-green-900 shadow-md";
+                warningTitle.innerHTML = `🎉 HONGERA: Mtaji Umeongezeka kwa TSH ${diffTotal.toLocaleString()}`;
+                warningText.innerHTML = `<p>Salio lako la usiku ni kubwa kuliko la asubuhi (Kuna ziada au faida kwenye mtaji wa leo).</p>`;
             }
         }
 
@@ -625,9 +669,8 @@
             const nightTotal = cashNight + nightFloatTotal;
             const deficitNotes = document.getElementById('dailyDeficitNotes').value.trim();
 
-            // Kama kuna upungufu na mtumiaji hajaweka maelezo, mtahadharishe lakini mruhusu aendelee akiwa na uhakika
             if (nightTotal < found.morningTotal && !deficitNotes) {
-                const ulitaka = confirm(`⚠️ UPO WAKATI WA UPUNGUFU:\nSalio la usiku ni dogo kuliko mtaji wa asubuhi kwa TSH ${(found.morningTotal - nightTotal).toLocaleString()}.\n\nJe, una uhakika na unapenda kuhifadhi hesabu hii yenye upungufu?`);
+                const ulitaka = confirm(`⚠️ TAARIFA YA UPUNGUFU:\nSalio la usiku ni dogo kuliko mtaji wa asubuhi kwa TSH ${(found.morningTotal - nightTotal).toLocaleString()}.\n\nJe, una uhakika na unapenda kuhifadhi hesabu hii yenye upungufu?`);
                 if (!ulitaka) return;
             }
 
@@ -663,8 +706,10 @@
                 if (item.isCompleted) {
                     if (item.nightTotal < item.morningTotal) {
                         statusBadge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">Pungufu (-TSH ${(item.morningTotal - item.nightTotal).toLocaleString()})</span>`;
+                    } else if (item.nightTotal > item.morningTotal) {
+                        statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">Ziada (+TSH ${(item.nightTotal - item.morningTotal).toLocaleString()})</span>`;
                     } else {
-                        statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">Imekamilika</span>`;
+                        statusBadge = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">Sawa (Balanced)</span>`;
                     }
                 }
 
@@ -702,7 +747,7 @@
 
             let deficitBanner = '';
             if (item.nightTotal < item.morningTotal) {
-                deficitBanner = `<div class="bg-red-50 p-2 text-red-700 rounded border"><b>⚠️ Upungufu:</b> Mtaji wa Asubuhi (TSH ${(item.morningTotal||0).toLocaleString()}) ulikuwa mkubwa kuliko Salio la Usiku (TSH ${(item.nightTotal||0).toLocaleString()}) kwa TSH ${(item.morningTotal - item.nightTotal).toLocaleString()}</div>`;
+                deficitBanner = `<div class="bg-red-50 p-2 text-red-700 rounded border"><b>⚠️ Taarifa ya Upungufu:</b> Mtaji wa Asubuhi (TSH ${(item.morningTotal||0).toLocaleString()}) ulikuwa mkubwa kuliko Salio la Usiku (TSH ${(item.nightTotal||0).toLocaleString()}) kwa TSH ${(item.morningTotal - item.nightTotal).toLocaleString()}</div>`;
             }
 
             document.getElementById('modalTitle').innerText = `JOMBAY ENTERPRISES - Statement ya Tarehe: ${item.date}`;
@@ -715,7 +760,7 @@
                     </div>
                     <div><b>Jumla ya Kamisheni za Siku:</b> <span class="text-green-700 font-bold text-sm">TSH ${(item.totalComm||0).toLocaleString()}</span></div>
                     ${deficitBanner}
-                    ${item.deficitNotes ? `<div class="bg-amber-50 p-2 text-amber-800 rounded border"><b>Maelezo / Sababu ya Upungufu:</b> ${item.deficitNotes}</div>` : ''}
+                    ${item.deficitNotes ? `<div class="bg-amber-50 p-2 text-amber-800 rounded border"><b>Maelezo / Mhamo wa Pesa:</b> ${item.deficitNotes}</div>` : ''}
                     <div class="border-t pt-2 font-bold text-slate-700">Orodha ya Miamala (Kutuma na Kutoa):</div>
                     <div class="space-y-1">${txHtml}</div>
                 </div>
