@@ -46,22 +46,22 @@
 
             <!-- STATUS BANNER -->
             <div id="syncStatusBar" class="hidden max-w-4xl mx-auto text-xs px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 flex justify-between items-center no-print">
-                <span id="syncStatusText">Database: Google Sheets imeunganishwa</span>
-                <button onclick="syncAllFromSheet(true)" class="underline font-bold text-blue-800">Sasisha Data</button>
+                <span id="syncStatusText">Mfumo uko tayari</span>
+                <button onclick="syncAllFromSheet(true)" class="underline font-bold text-blue-800">Sasisha Kumbukumbu</button>
             </div>
 
             <!-- FAIDA NA FAQ -->
             <div id="landingInfoSection" class="max-w-md mx-auto space-y-4 no-print">
                 <details class="bg-blue-900 text-white rounded-xl shadow-md border border-blue-800 overflow-hidden">
                     <summary class="p-4 font-bold text-sm text-yellow-300 cursor-pointer flex justify-between items-center bg-blue-900 hover:bg-blue-800">
-                        <span>🌟 Faida za WakalaSmartRekodi (Jombay)</span>
+                        <span>🌟 Faida za WakalaSmartRekodi (JOMBAY ENTERPRISES)</span>
                         <span class="text-xs bg-blue-800 px-2 py-1 rounded text-white">Bonyeza kuona</span>
                     </summary>
                     <div class="p-4 bg-blue-950 text-xs space-y-2 border-t border-blue-800">
-                        <p><b>• Uhifadhi Salama:</b> Data zako za asubuhi, jioni na miamala zinahifadhiwa kwenye Google Sheet na hazipotei ukifuta cache au kubadili kifaa.</p>
+                        <p><b>• Uhifadhi Salama:</b> Taarifa zako za asubuhi, jioni na miamala zinahifadhiwa kwa usalama na hazipotei ukifuta cache au kubadili kifaa.</p>
                         <p><b>• Auto-Commission:</b> Mfumo unakokotoa asilimia (%) za kamisheni za kutuma na kutoa kwa kila mtandao kiotomatiki.</p>
                         <p><b>• Uchambuzi wa Salio:</b> Mfumo unakupa taarifa ya haraka kama mtaji umepungua au kuongezeka.</p>
-                        <p><b>• Urahisi wa Ku-print:</b> Tazama kumbukumbu za nyuma na uchapishe ripoti ya siku kwa urahisi.</p>
+                        <p><b>• Urahisi wa Ku-print:</b> Tazama kumbukumbu za leo au za nyuma na uchapishe ripoti ya siku kwa urahisi.</p>
                     </div>
                 </details>
             </div>
@@ -151,8 +151,8 @@
             <div id="dashboardSection" class="hidden space-y-6">
 
                 <!-- MAIN TABS -->
-                <div class="flex justify-between items-center bg-white rounded-t-lg px-2 pt-2 border-b shadow-sm no-print">
-                    <div class="flex gap-2">
+                <div class="flex flex-wrap justify-between items-center bg-white rounded-t-lg px-2 pt-2 border-b shadow-sm no-print">
+                    <div class="flex flex-wrap gap-2">
                         <button id="mainTabNew" onclick="switchMainTab('new')" class="px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900">Shughuli za Siku</button>
                         <button id="mainTabHistory" onclick="switchMainTab('history')" class="px-4 py-2 text-sm font-semibold text-slate-500">Kumbukumbu Zote</button>
                         <button id="mainTabAdmin" onclick="switchMainTab('admin')" class="hidden px-4 py-2 text-sm font-semibold text-amber-600">Admin Panel</button>
@@ -248,14 +248,19 @@
                     </div>
                 </div>
 
-                <!-- VIEW HISTORY (KUMBUKUMBU ZISIZOFUTIKA) -->
+                <!-- VIEW HISTORY (KUMBUKUMBU ZA LEO & KUMBUKUMBU ZOTE) -->
                 <div id="viewHistory" class="hidden space-y-4">
-                    <div class="bg-white p-4 rounded-xl border flex justify-between items-center no-print">
-                        <h3 class="font-bold text-slate-800">Kumbukumbu Zote Zisizofutika</h3>
-                        <div class="flex gap-2">
-                            <button onclick="loadHistoryEntries()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-semibold">Refresh</button>
-                            <button onclick="switchMainTab('new')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-semibold">← Rudi Shughuli za Siku</button>
+                    <div class="bg-white p-4 rounded-xl border space-y-3 no-print">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <h3 id="historyHeadingTitle" class="font-bold text-slate-800">Kumbukumbu Zako</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button id="filterTodayBtn" onclick="setHistoryFilter('today')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold">Kumbukumbu za Leo</button>
+                                <button id="filterAllBtn" onclick="setHistoryFilter('all')" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold">Kumbukumbu Zote</button>
+                                <button onclick="refreshHistoryFromServer()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded text-xs font-semibold">Sasisha</button>
+                                <button onclick="switchMainTab('new')" class="bg-blue-800 text-white px-3 py-1.5 rounded text-xs font-semibold">← Rudi Shughuli za Siku</button>
+                            </div>
                         </div>
+                        <p id="historyFilterHint" class="text-xs text-slate-500">Inaonyesha kumbukumbu za leo pekee.</p>
                     </div>
                     <div id="historyContainer" class="space-y-3">
                         <p class="text-xs text-slate-500 text-center py-4">Bado hakuna kumbukumbu zilizohifadhiwa.</p>
@@ -265,10 +270,13 @@
                 <!-- VIEW ADMIN -->
                 <div id="viewAdmin" class="hidden space-y-6">
                     <div class="bg-amber-50 border p-4 rounded-xl font-bold text-amber-900 flex justify-between items-center">
-                        <span>Admin Panel - Orodha ya Watumiaji na Password Zao</span>
+                        <span>Admin Panel - Usimamizi wa Watumiaji na Kumbukumbu</span>
                         <button onclick="switchMainTab('new')" class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-xs font-semibold">← Rudi Nyumbani</button>
                     </div>
+
+                    <!-- ORODHA YA WATUMIAJI -->
                     <div class="bg-white rounded-xl border overflow-x-auto">
+                        <div class="p-3 border-b font-bold text-xs text-slate-700 bg-slate-50">Orodha ya Watumiaji na Password Zao</div>
                         <table class="w-full text-left text-sm">
                             <thead>
                                 <tr class="bg-slate-100 text-xs">
@@ -280,6 +288,23 @@
                             </thead>
                             <tbody id="adminUsersTable"></tbody>
                         </table>
+                    </div>
+
+                    <!-- KUFUTA KUMBUKUMBU ZA MAKOSA -->
+                    <div class="bg-white rounded-xl border p-4 space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+                            <div>
+                                <h4 class="font-bold text-sm text-slate-800">Futa Kumbukumbu Zilizowekwa kwa Makosa</h4>
+                                <p class="text-xs text-slate-500">Chagua kumbukumbu yoyote hapa chini na ubonyeze <b>Futa</b> ili kuiondoa.</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <input type="text" id="adminSearchInput" oninput="renderAdminEntriesList()" placeholder="Tafuta mtumiaji au tarehe..." class="border rounded-lg px-2.5 py-1.5 text-xs outline-none">
+                                <button onclick="syncAllFromSheet(true)" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-semibold">Sasisha Orodha</button>
+                            </div>
+                        </div>
+                        <div id="adminEntriesContainer" class="space-y-2.5">
+                            <p class="text-xs text-slate-500 text-center py-4">Hakuna kumbukumbu za kuonyesha.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -321,6 +346,7 @@
         let activeTransactionsToday = [];
         let cachedEntries = [];
         let cachedTransactions = [];
+        let currentHistoryMode = 'today';
 
         const dateInputEl = document.getElementById('entryDate');
         dateInputEl.valueAsDate = new Date();
@@ -331,6 +357,12 @@
             populateNetworkSelect();
             checkExistingSession();
         };
+
+        function getTodayDateStr() {
+            const now = new Date();
+            const offsetMs = now.getTimezoneOffset() * 60000;
+            return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+        }
 
         function autoSelectDayOfWeek() {
             const val = document.getElementById('entryDate').value;
@@ -513,7 +545,7 @@
             const box = document.getElementById('eveningVarianceBox');
             if (!box || !currentUser) return;
 
-            const dateStr = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+            const dateStr = document.getElementById('entryDate')?.value || getTodayDateStr();
             const morningRow = findMorningEntryForDate(currentUser.username, dateStr);
             const cashNight = Number(document.getElementById('cashNight')?.value) || 0;
             const floatNight = sumInputs('.evening-float-input');
@@ -564,6 +596,14 @@
             localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
         }
 
+        function formatFriendlySaveMessage(resMessage, fallbackMsg) {
+            const clean = String(resMessage || '').trim();
+            if (!clean || /google\s*sheet/i.test(clean)) {
+                return fallbackMsg;
+            }
+            return clean;
+        }
+
         async function saveMorningEntry() {
             if (!currentUser) {
                 alert("Tafadhali ingia kwanza.");
@@ -573,10 +613,10 @@
             const cash = Number(document.getElementById('cashMorning')?.value) || 0;
             const floatTotal = sumInputs('.morning-float-input');
             const total = cash + floatTotal;
-            const date = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+            const date = document.getElementById('entryDate')?.value || getTodayDateStr();
             const day = document.getElementById('entryDayOfWeek')?.value || "";
 
-            setLoading('saveMorningBtn', true, "Inahifadhi mtaji wa asubuhi...");
+            setLoading('saveMorningBtn', true, "Inahifadhi taarifa...");
             try {
                 const payload = {
                     action: "addentry",
@@ -601,13 +641,20 @@
                 const res = await apiPost(payload);
                 if (res.status === "success") {
                     updateLocalEntrySinglePeriod(payload.entry);
-                    alert(res.message || `Mtaji wa asubuhi (${total.toLocaleString()} TSH) umehifadhiwa!`);
+                    const msg = formatFriendlySaveMessage(
+                        res.message,
+                        `Hongera! Taarifa zako za mtaji wa asubuhi (${total.toLocaleString()} TSH) zimehifadhiwa vizuri.`
+                    );
+                    alert(msg);
                     refreshEveningLivePreview();
+                    if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
+                        renderHistoryView();
+                    }
                 } else {
-                    alert(res.message || "Imeshindikana kuhifadhi mtaji wa asubuhi.");
+                    alert(formatFriendlySaveMessage(res.message, "Imeshindikana kuhifadhi taarifa. Tafadhali jaribu tena."));
                 }
             } catch (err) {
-                alert("Hitilafu wakati wa kuhifadhi asubuhi: " + err.message);
+                alert("Hitilafu ya mtandao wakati wa kuhifadhi taarifa. Tafadhali jaribu tena.");
             } finally {
                 setLoading('saveMorningBtn', false);
             }
@@ -622,10 +669,10 @@
             const cash = Number(document.getElementById('cashNight')?.value) || 0;
             const floatTotal = sumInputs('.evening-float-input');
             const eveningTotal = cash + floatTotal;
-            const date = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+            const date = document.getElementById('entryDate')?.value || getTodayDateStr();
             const day = document.getElementById('entryDayOfWeek')?.value || "";
 
-            setLoading('saveEveningBtn', true, "Inavuta hesabu ya asubuhi na kukagua...");
+            setLoading('saveEveningBtn', true, "Inakagua hesabu...");
             try {
                 await syncAllFromSheet(false);
                 const morningRow = findMorningEntryForDate(currentUser.username, date);
@@ -649,14 +696,14 @@
                 setLoading('saveEveningBtn', false);
 
                 const confirmed = confirm(
-                    summaryText + "\n\nJe, unathibitisha kuhifadhi hesabu hii ya jioni (rekodi moja ya siku)?"
+                    summaryText + "\n\nJe, unathibitisha kuhifadhi hesabu hii ya jioni?"
                 );
                 if (!confirmed) {
                     alert("Kuhifadhi kumesitishwa.");
                     return;
                 }
 
-                setLoading('saveEveningBtn', true, "Inahifadhi hesabu ya jioni...");
+                setLoading('saveEveningBtn', true, "Inahifadhi taarifa...");
 
                 const eveningEntry = {
                     date,
@@ -683,19 +730,26 @@
 
                 if (saveRes.status === "success") {
                     updateLocalEntrySinglePeriod(eveningEntry);
-                    alert(saveRes.message || (summaryText + "\n\nHesabu ya jioni imehifadhiwa!"));
+                    const msg = formatFriendlySaveMessage(
+                        saveRes.message,
+                        `${summaryText}\n\nHongera! Taarifa zako za kufunga hesabu ya jioni zimehifadhiwa vizuri.`
+                    );
+                    alert(msg);
                     refreshEveningLivePreview();
+                    if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
+                        renderHistoryView();
+                    }
                 } else {
-                    alert(saveRes.message || "Imeshindikana kuhifadhi hesabu ya jioni.");
+                    alert(formatFriendlySaveMessage(saveRes.message, "Imeshindikana kuhifadhi taarifa. Tafadhali jaribu tena."));
                 }
             } catch (err) {
-                alert("Hitilafu wakati wa kufunga hesabu ya jioni: " + err.message);
+                alert("Hitilafu ya mtandao wakati wa kufunga hesabu. Tafadhali jaribu tena.");
             } finally {
                 setLoading('saveEveningBtn', false);
             }
         }
 
-        // USAJILI MPYA (GOOGLE SHEETS)
+        // USAJILI MPYA
         async function handleRegisterSubmit() {
             const username = document.getElementById('regUsername').value.trim();
             const email = document.getElementById('regEmail').value.trim();
@@ -708,7 +762,7 @@
                 return;
             }
 
-            setLoading('registerBtn', true, "Inasajili kwenye Google Sheet...");
+            setLoading('registerBtn', true, "Inasajili akaunti...");
             try {
                 const res = await apiPost({
                     action: "register",
@@ -721,23 +775,23 @@
                 });
 
                 if (res.status === "success") {
-                    alert(res.message || "Usajili umefanikiwa! Akaunti imehifadhiwa.");
+                    alert(formatFriendlySaveMessage(res.message, "Hongera! Akaunti yako imesajiliwa vizuri. Unaweza kuingia sasa."));
                     document.getElementById('regUsername').value = '';
                     document.getElementById('regEmail').value = '';
                     document.getElementById('regPhone').value = '';
                     document.getElementById('regPassword').value = '';
                     showLoginForm();
                 } else {
-                    alert(res.message || "Imeshindikana kusajili.");
+                    alert(formatFriendlySaveMessage(res.message, "Imeshindikana kusajili akaunti."));
                 }
             } catch (err) {
-                alert("Hitilafu ya mtandao wakati wa kusajili: " + err.message);
+                alert("Hitilafu ya mtandao wakati wa kusajili. Tafadhali jaribu tena.");
             } finally {
                 setLoading('registerBtn', false);
             }
         }
 
-        // KUINGIA (LOGIN KUTOKA GOOGLE SHEETS)
+        // KUINGIA (LOGIN)
         async function handleLogin() {
             const usernameInput = document.getElementById('loginUsername').value.trim();
             const passwordInput = document.getElementById('loginPassword').value.trim();
@@ -773,13 +827,13 @@
                     alert("Username au Password si sahihi!");
                 }
             } catch (err) {
-                alert("Imeshindwa kuunganisha na database: " + err.message);
+                alert("Imeshindwa kuunganisha. Tafadhali jaribu tena.");
             } finally {
                 setLoading('loginBtn', false);
             }
         }
 
-        // BADILI PASSWORD (GOOGLE SHEETS)
+        // BADILI PASSWORD
         async function handleResetPassword() {
             const username = document.getElementById('forgotUsername').value.trim();
             const phone = document.getElementById('forgotPhone').value.trim();
@@ -800,16 +854,16 @@
                 });
 
                 if (res.status === "success") {
-                    alert(res.message || "Password imebadilishwa kikamilifu!");
+                    alert(formatFriendlySaveMessage(res.message, "Hongera! Password yako imebadilishwa vizuri."));
                     document.getElementById('forgotUsername').value = '';
                     document.getElementById('forgotPhone').value = '';
                     document.getElementById('forgotNewPassword').value = '';
                     showLoginForm();
                 } else {
-                    alert(res.message || "Imeshindikana kubadili password.");
+                    alert(formatFriendlySaveMessage(res.message, "Imeshindikana kubadili password."));
                 }
             } catch (err) {
-                alert("Hitilafu ya mtandao: " + err.message);
+                alert("Hitilafu ya mtandao. Tafadhali jaribu tena.");
             } finally {
                 setLoading('resetPassBtn', false);
             }
@@ -821,6 +875,11 @@
                 currentUser = JSON.parse(session);
                 startDashboard();
             }
+        }
+
+        function isCurrentUserAdmin() {
+            if (!currentUser) return false;
+            return currentUser.role === 'admin' || String(currentUser.username || '').trim().toLowerCase() === 'admin';
         }
 
         async function startDashboard() {
@@ -835,7 +894,7 @@
             document.getElementById('userBadge').innerText = `${currentUser.username} (${currentUser.accountType.toUpperCase()})`;
             document.getElementById('activeUserLabel').innerText = currentUser.username;
 
-            if (currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'admin') {
+            if (isCurrentUserAdmin()) {
                 document.getElementById('mainTabAdmin').classList.remove('hidden');
             } else {
                 document.getElementById('mainTabAdmin').classList.add('hidden');
@@ -851,7 +910,7 @@
             const type = document.getElementById('txTypeSelect')?.value || "withdraw";
             const amount = Number(document.getElementById('txAmountInput')?.value) || 0;
             const commission = Number(document.getElementById('txCommissionInput')?.value) || 0;
-            const date = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+            const date = document.getElementById('entryDate')?.value || getTodayDateStr();
 
             if (amount <= 0) {
                 return alert("Tafadhali weka kiasi cha pesa.");
@@ -872,12 +931,14 @@
                     transaction: txItem
                 });
                 activeTransactionsToday.unshift(txItem);
+                cachedTransactions.unshift(txItem);
+                localStorage.setItem('jombay_tx_cache', JSON.stringify(cachedTransactions));
                 renderActiveTransactions();
                 document.getElementById('txAmountInput').value = '';
                 document.getElementById('txCommissionInput').value = 0;
-                alert(res.message || "Muamala umehifadhiwa!");
+                alert(formatFriendlySaveMessage(res.message, "Hongera! Taarifa za muamala wako zimehifadhiwa vizuri."));
             } catch (err) {
-                alert("Hitilafu wakati wa kuhifadhi muamala: " + err.message);
+                alert("Hitilafu ya mtandao wakati wa kuhifadhi muamala. Tafadhali jaribu tena.");
             } finally {
                 setLoading('addTxBtn', false);
             }
@@ -906,24 +967,212 @@
 
         async function syncAllFromSheet(showAlert = false) {
             const statusEl = document.getElementById('syncStatusText');
-            if (statusEl) statusEl.innerText = "Inasawazisha data na Google Sheet...";
+            if (statusEl) statusEl.innerText = "Inasasisha taarifa...";
             try {
+                const queryUser = isCurrentUserAdmin() ? "all" : currentUser.username;
                 const [entriesRes, txRes] = await Promise.all([
-                    apiGet("entries", currentUser.username),
-                    apiGet("transactions", currentUser.username)
+                    apiGet("entries", queryUser),
+                    apiGet("transactions", queryUser)
                 ]);
                 cachedEntries = Array.isArray(entriesRes.data) ? entriesRes.data : [];
                 cachedTransactions = Array.isArray(txRes.data) ? txRes.data : [];
                 localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
                 localStorage.setItem('jombay_tx_cache', JSON.stringify(cachedTransactions));
 
-                if (statusEl) statusEl.innerText = `Google Sheet imesawazishwa (${cachedEntries.length} entries, ${cachedTransactions.length} tx)`;
-                if (showAlert) alert("Data zimesasishwa kutoka Google Sheet!");
+                if (statusEl) statusEl.innerText = "Taarifa zimesasishwa";
+                if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
+                    renderHistoryView();
+                }
+                if (!document.getElementById('viewAdmin')?.classList.contains('hidden')) {
+                    renderAdminUsers();
+                    renderAdminEntriesList();
+                }
+                if (showAlert) alert("Taarifa zako zimesasishwa vizuri!");
             } catch (err) {
                 const localSaved = JSON.parse(localStorage.getItem('jombay_entries_cache') || '[]');
                 if (localSaved.length) cachedEntries = localSaved;
-                if (statusEl) statusEl.innerText = "Imeshindwa kusawazisha (inatumia cache ya awali)";
+                if (statusEl) statusEl.innerText = "Mfumo uko tayari";
+                if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
+                    renderHistoryView();
+                }
+                if (!document.getElementById('viewAdmin')?.classList.contains('hidden')) {
+                    renderAdminUsers();
+                    renderAdminEntriesList();
+                }
             }
+        }
+
+        function setHistoryFilter(mode) {
+            currentHistoryMode = mode;
+            const todayBtn = document.getElementById('filterTodayBtn');
+            const allBtn = document.getElementById('filterAllBtn');
+            const titleEl = document.getElementById('historyHeadingTitle');
+            const hintEl = document.getElementById('historyFilterHint');
+
+            if (mode === 'today') {
+                todayBtn.className = "bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold";
+                allBtn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold";
+                if (titleEl) titleEl.innerText = "Kumbukumbu za Leo";
+                if (hintEl) hintEl.innerText = `Inaonyesha kumbukumbu zako za leo (${getTodayDateStr()}).`;
+            } else {
+                allBtn.className = "bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold";
+                todayBtn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold";
+                if (titleEl) titleEl.innerText = "Kumbukumbu Zote";
+                if (hintEl) hintEl.innerText = "Inaonyesha kumbukumbu zote ulizowahi kuhifadhi.";
+            }
+            renderHistoryView();
+        }
+
+        function refreshHistoryFromServer() {
+            syncAllFromSheet(false);
+        }
+
+        function renderHistoryView() {
+            const container = document.getElementById('historyContainer');
+            if (!container || !currentUser) return;
+
+            const uLower = String(currentUser.username || '').trim().toLowerCase();
+            const todayStr = getTodayDateStr();
+
+            let userEntries = (cachedEntries || []).filter(row => {
+                const rUser = String(row.username || '').trim().toLowerCase();
+                if (!isCurrentUserAdmin() && rUser !== uLower) return false;
+                if (currentHistoryMode === 'today') {
+                    const rDate = String(row.date || row.timestamp || '').slice(0, 10);
+                    return rDate === todayStr;
+                }
+                return true;
+            });
+
+            if (!userEntries.length) {
+                const emptyText = currentHistoryMode === 'today'
+                    ? "Hakuna kumbukumbu zilizohifadhiwa kwa leo bado."
+                    : "Bado hakuna kumbukumbu zozote zilizohifadhiwa.";
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">${emptyText}</p>`;
+                return;
+            }
+
+            container.innerHTML = userEntries.slice().reverse().map((row, idx) => `
+                <div onclick="openEntryDetailModal(${idx})" class="cursor-pointer bg-white p-4 rounded-xl border shadow-sm hover:border-blue-400 flex justify-between items-center text-xs transition">
+                    <div>
+                        <div class="font-bold text-blue-900">${row.date || ''} ${row.day ? '(' + row.day + ')' : ''} — <span class="uppercase">${row.type || ''}</span></div>
+                        <div class="text-slate-500 mt-0.5">Mtumiaji: ${row.username || ''} | ${row.notes || ''}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-sm text-slate-800">${Number(row.total || row.amount || 0).toLocaleString()} TSH</div>
+                        ${row.varianceStatus && row.varianceStatus !== 'normal' && row.varianceStatus !== 'morning_open' ? `<div class="font-semibold text-amber-700">${row.varianceStatus}: ${Number(row.varianceAmount || 0).toLocaleString()}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openEntryDetailModal(reversedIdx) {
+            const uLower = String(currentUser.username || '').trim().toLowerCase();
+            const todayStr = getTodayDateStr();
+            const list = (cachedEntries || []).filter(row => {
+                const rUser = String(row.username || '').trim().toLowerCase();
+                if (!isCurrentUserAdmin() && rUser !== uLower) return false;
+                if (currentHistoryMode === 'today') {
+                    return String(row.date || row.timestamp || '').slice(0, 10) === todayStr;
+                }
+                return true;
+            }).slice().reverse();
+
+            const item = list[reversedIdx];
+            if (!item) return;
+
+            document.getElementById('modalTitle').innerText = `Kumbukumbu: ${item.date || ''} (${String(item.type || '').toUpperCase()})`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="p-4 bg-slate-50 rounded-lg border space-y-2">
+                    <div><b>Akaunti:</b> ${item.username || ''}</div>
+                    <div><b>Tarehe:</b> ${item.date || ''} ${item.day ? '(' + item.day + ')' : ''}</div>
+                    <div><b>Kipindi:</b> ${String(item.type || '').toUpperCase()}</div>
+                    <div><b>Jumla:</b> ${Number(item.total || item.amount || 0).toLocaleString()} TSH</div>
+                    <div><b>Maelezo:</b> ${item.notes || '-'}</div>
+                </div>
+            `;
+            document.getElementById('detailModal')?.classList.remove('hidden');
+        }
+
+        function renderAdminUsers() {
+            const tbody = document.getElementById('adminUsersTable');
+            if (!tbody) return;
+            const users = JSON.parse(localStorage.getItem('jombay_users_cache') || '[]');
+            tbody.innerHTML = users.map(u => `
+                <tr class="border-t text-xs">
+                    <td class="p-3 font-semibold">${u.username || ''}</td>
+                    <td class="p-3">${u.accountType || ''}</td>
+                    <td class="p-3">${u.phone || ''}</td>
+                    <td class="p-3 font-mono">${u.password || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderAdminEntriesList() {
+            const container = document.getElementById('adminEntriesContainer');
+            if (!container) return;
+
+            const term = String(document.getElementById('adminSearchInput')?.value || '').trim().toLowerCase();
+            const entriesWithIndex = (cachedEntries || []).map((row, originalIndex) => ({ row, originalIndex }));
+
+            const filtered = entriesWithIndex.filter(({ row }) => {
+                if (!term) return true;
+                const hay = `${row.username || ''} ${row.date || ''} ${row.type || ''} ${row.notes || ''}`.toLowerCase();
+                return hay.includes(term);
+            }).reverse();
+
+            if (!filtered.length) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Hakuna kumbukumbu zinazolingana na utafutaji.</p>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(({ row, originalIndex }) => `
+                <div class="p-3 rounded-lg border bg-slate-50 flex flex-wrap justify-between items-center gap-3 text-xs">
+                    <div>
+                        <div class="font-bold text-slate-800">${row.date || ''} — <span class="text-blue-900 uppercase">${row.type || ''}</span> — <span class="text-amber-800">${row.username || ''}</span></div>
+                        <div class="text-slate-600 mt-0.5">Jumla: <b>${Number(row.total || row.amount || 0).toLocaleString()} TSH</b> | ${row.notes || ''}</div>
+                    </div>
+                    <button onclick="adminDeleteEntry(${originalIndex})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-bold">
+                        Futa
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function adminDeleteEntry(originalIndex) {
+            if (!isCurrentUserAdmin()) {
+                return alert("Huna ruhusa ya kufuta kumbukumbu.");
+            }
+            const target = cachedEntries[originalIndex];
+            if (!target) return;
+
+            const sure = confirm(
+                `Je, una uhakika unataka kufuta kumbukumbu hii?\n` +
+                `Mtumiaji: ${target.username || ''}\n` +
+                `Tarehe: ${target.date || ''} (${target.type || ''})\n` +
+                `Kiasi: ${Number(target.total || target.amount || 0).toLocaleString()} TSH`
+            );
+            if (!sure) return;
+
+            try {
+                await apiPost({
+                    action: "deleteentry",
+                    entry: target,
+                    username: target.username || "",
+                    date: target.date || "",
+                    type: target.type || "",
+                    timestamp: target.timestamp || ""
+                });
+            } catch (e) {
+                // Inaendelea kuondoa kwenye cache ya mfumo
+            }
+
+            cachedEntries.splice(originalIndex, 1);
+            localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
+            renderAdminEntriesList();
+            renderHistoryView();
+            refreshEveningLivePreview();
+            alert("Kumbukumbu imefutwa vizuri.");
         }
 
         function switchMainTab(tab) {
@@ -936,11 +1185,12 @@
             }
             if (tab === 'history') {
                 document.getElementById('viewHistory')?.classList.remove('hidden');
-                loadHistoryEntries();
+                setHistoryFilter(currentHistoryMode || 'today');
             }
             if (tab === 'admin') {
                 document.getElementById('viewAdmin')?.classList.remove('hidden');
                 renderAdminUsers();
+                renderAdminEntriesList();
             }
         }
 
@@ -960,41 +1210,6 @@
             if (num === 2) {
                 refreshEveningLivePreview();
             }
-        }
-
-        function loadHistoryEntries() {
-            const container = document.getElementById('historyContainer');
-            if (!container) return;
-            if (!cachedEntries.length) {
-                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Bado hakuna kumbukumbu zilizohifadhiwa.</p>`;
-                return;
-            }
-            container.innerHTML = cachedEntries.slice().reverse().map(row => `
-                <div class="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center text-xs">
-                    <div>
-                        <div class="font-bold text-blue-900">${row.date || ''} ${row.day ? '(' + row.day + ')' : ''} — <span class="uppercase">${row.type || ''}</span></div>
-                        <div class="text-slate-500 mt-0.5">Mtumiaji: ${row.username || ''} | ${row.notes || ''}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold text-sm text-slate-800">${Number(row.total || row.amount || 0).toLocaleString()} TSH</div>
-                        ${row.varianceStatus && row.varianceStatus !== 'normal' && row.varianceStatus !== 'morning_open' ? `<div class="font-semibold text-amber-700">${row.varianceStatus}: ${Number(row.varianceAmount || 0).toLocaleString()}</div>` : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function renderAdminUsers() {
-            const tbody = document.getElementById('adminUsersTable');
-            if (!tbody) return;
-            const users = JSON.parse(localStorage.getItem('jombay_users_cache') || '[]');
-            tbody.innerHTML = users.map(u => `
-                <tr class="border-t text-xs">
-                    <td class="p-3 font-semibold">${u.username || ''}</td>
-                    <td class="p-3">${u.accountType || ''}</td>
-                    <td class="p-3">${u.phone || ''}</td>
-                    <td class="p-3 font-mono">${u.password || ''}</td>
-                </tr>
-            `).join('');
         }
 
         function showLoginForm() {
