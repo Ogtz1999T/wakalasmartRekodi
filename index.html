@@ -396,6 +396,42 @@
             } catch (e) {}
         }
 
+        function normalizeUserObj(u) {
+            if (!u || typeof u !== 'object') return null;
+            const username = String(u.username || u.user || u.name || '').trim();
+            if (!username) return null;
+            return {
+                username,
+                email: String(u.email || '').trim(),
+                phone: String(u.phone || u.simu || '').trim(),
+                accountType: String(u.accountType || u.account_type || u.role || 'regular').trim(),
+                password: String(u.password ?? u.pass ?? '')
+            };
+        }
+
+        function mergeUsersSafely(remoteList, localList) {
+            const map = new Map();
+            (Array.isArray(localList) ? localList : []).forEach(u => {
+                const norm = normalizeUserObj(u);
+                if (norm) map.set(norm.username.toLowerCase(), norm);
+            });
+            (Array.isArray(remoteList) ? remoteList : []).forEach(u => {
+                const norm = normalizeUserObj(u);
+                if (!norm) return;
+                const key = norm.username.toLowerCase();
+                const existing = map.get(key);
+                map.set(key, {
+                    ...existing,
+                    ...norm,
+                    password: norm.password || (existing ? existing.password : ''),
+                    phone: norm.phone || (existing ? existing.phone : ''),
+                    email: norm.email || (existing ? existing.email : ''),
+                    accountType: norm.accountType || (existing ? existing.accountType : 'regular')
+                });
+            });
+            return Array.from(map.values());
+        }
+
         function getEntryKey(item) {
             const u = String(item.username || '').trim().toLowerCase();
             const d = String(item.date || item.timestamp || '').slice(0, 10);
@@ -983,12 +1019,15 @@
             const password = document.getElementById('regPassword')?.value || '';
 
             if (!username || !password) return alert('Weka Username na Password.');
+
+            // Hakiki kwanza kutoka Google Sheet kama username ipo kwenye kifaa kingine
+            await syncAllFromSheet(false);
             if (cachedUsers.some(u => String(u.username || '').toLowerCase() === username.toLowerCase())) {
                 return alert('Username tayari ipo.');
             }
 
-            const newUser = { username, email, phone, accountType, password };
-            cachedUsers.push(newUser);
+            const newUser = normalizeUserObj({ username, email, phone, accountType, password });
+            cachedUsers = mergeUsersSafely([newUser], cachedUsers);
             writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
             await postToGoogleSheet({ action: 'register', user: newUser, ...newUser });
 
@@ -998,17 +1037,43 @@
             showLoginForm();
         }
 
-        function handleLogin() {
+        async function handleLogin() {
             const username = document.getElementById('loginUsername')?.value.trim();
             const password = document.getElementById('loginPassword')?.value || '';
             if (!username || !password) return alert('Weka Username na Password.');
 
-            const user = cachedUsers.find(u =>
-                String(u.username || '').toLowerCase() === username.toLowerCase() &&
-                String(u.password || '') === password
-            );
-            if (!user) return alert('Username au Password si sahihi.');
-            enterDashboard(user);
+            const btn = document.getElementById('loginBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Inakagua akaunti...';
+            }
+
+            try {
+                let user = cachedUsers.find(u =>
+                    String(u.username || '').toLowerCase() === username.toLowerCase() &&
+                    String(u.password || '') === password
+                );
+
+                // Kama hayupo kwenye kifaa hiki (mf. simu nyingine), vuta kwanza kutoka Google Sheet
+                if (!user) {
+                    await syncAllFromSheet(false);
+                    user = cachedUsers.find(u =>
+                        String(u.username || '').toLowerCase() === username.toLowerCase() &&
+                        String(u.password || '') === password
+                    );
+                }
+
+                if (!user) {
+                    return alert('Username au Password si sahihi.');
+                }
+
+                enterDashboard(user);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Ingia (Login)';
+                }
+            }
         }
 
         async function handleResetPassword() {
@@ -1016,6 +1081,8 @@
             const phone = document.getElementById('forgotPhone')?.value.trim();
             const newPassword = document.getElementById('forgotNewPassword')?.value || '';
             if (!username || !phone || !newPassword) return alert('Jaza sehemu zote.');
+
+            await syncAllFromSheet(false);
 
             const idx = cachedUsers.findIndex(u =>
                 String(u.username || '').toLowerCase() === username.toLowerCase() &&
@@ -1032,14 +1099,15 @@
         }
 
         function enterDashboard(user) {
-            currentUser = user;
-            try { localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user)); } catch (e) {}
+            const normUser = normalizeUserObj(user) || user;
+            currentUser = normUser;
+            try { localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(normUser)); } catch (e) {}
 
             document.getElementById('userInfoHeader')?.classList.remove('hidden');
-            document.getElementById('userBadge').textContent = `${user.username} (${user.accountType || 'regular'})`;
-            document.getElementById('activeUserLabel').textContent = `${user.username} • ${user.accountType || 'regular'}`;
+            document.getElementById('userBadge').textContent = `${normUser.username} (${normUser.accountType || 'regular'})`;
+            document.getElementById('activeUserLabel').textContent = `${normUser.username} • ${normUser.accountType || 'regular'}`;
 
-            if (isAdmin(user)) {
+            if (isAdmin(normUser)) {
                 document.getElementById('mainTabAdmin')?.classList.remove('hidden');
             } else {
                 document.getElementById('mainTabAdmin')?.classList.add('hidden');
@@ -1058,29 +1126,52 @@
             showLoginForm();
         }
 
+        function extractUsersArray(data) {
+            if (!data) return [];
+            if (Array.isArray(data)) return data;
+            if (Array.isArray(data.users)) return data.users;
+            if (data.data && Array.isArray(data.data.users)) return data.data.users;
+            return [];
+        }
+
+        function extractEntriesArray(data) {
+            if (!data) return [];
+            if (Array.isArray(data.entries)) return data.entries;
+            if (data.data && Array.isArray(data.data.entries)) return data.data.entries;
+            return [];
+        }
+
+        function extractTransactionsArray(data) {
+            if (!data) return [];
+            if (Array.isArray(data.transactions)) return data.transactions;
+            if (data.data && Array.isArray(data.data.transactions)) return data.data.transactions;
+            return [];
+        }
+
         async function syncAllFromSheet(showAlert = false) {
             if (!API_URL) return;
             setSyncStatus('Inasawazisha na Google Sheet...');
             try {
-                const res = await fetch(`${API_URL}?action=getAll`, { cache: 'no-store' });
+                const res = await fetch(`${API_URL}?action=getAll&t=${Date.now()}`, { cache: 'no-store' });
                 if (!res.ok) throw new Error('Failed');
                 const data = await res.json();
 
-                if (Array.isArray(data.users) && data.users.length) {
-                    const mapU = new Map();
-                    [...cachedUsers, ...data.users].forEach(u => {
-                        if (u?.username) mapU.set(String(u.username).toLowerCase(), u);
-                    });
-                    cachedUsers = Array.from(mapU.values());
+                const remoteUsers = extractUsersArray(data);
+                if (remoteUsers.length) {
+                    cachedUsers = mergeUsersSafely(remoteUsers, cachedUsers);
                     writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
                 }
-                if (Array.isArray(data.entries)) {
-                    cachedEntries = mergeEntriesSafely(data.entries, cachedEntries);
+
+                const remoteEntries = extractEntriesArray(data);
+                if (remoteEntries.length) {
+                    cachedEntries = mergeEntriesSafely(remoteEntries, cachedEntries);
                     writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
                 }
-                if (Array.isArray(data.transactions)) {
+
+                const remoteTxs = extractTransactionsArray(data);
+                if (remoteTxs.length) {
                     const mapT = new Map();
-                    [...cachedTransactions, ...data.transactions].forEach((t, i) => {
+                    [...cachedTransactions, ...remoteTxs].forEach((t, i) => {
                         const k = t._id || `tx_remote_${i}_${t.timestamp || ''}`;
                         mapT.set(k, { ...t, _id: k });
                     });
@@ -1098,8 +1189,8 @@
             }
         }
 
-        function initApp() {
-            cachedUsers = readLocalArray(STORAGE_KEYS.USERS);
+        async function initApp() {
+            cachedUsers = mergeUsersSafely([], readLocalArray(STORAGE_KEYS.USERS));
             cachedEntries = readLocalArray(STORAGE_KEYS.ENTRIES);
             cachedTransactions = readLocalArray(STORAGE_KEYS.TX);
 
@@ -1109,6 +1200,8 @@
             renderNetworkFields();
             autoSelectDayOfWeek();
 
+            await syncAllFromSheet(false);
+
             try {
                 const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || 'null');
                 if (saved?.username) enterDashboard(saved);
@@ -1116,8 +1209,6 @@
             } catch (e) {
                 showLoginForm();
             }
-
-            syncAllFromSheet(false);
         }
 
         document.addEventListener('DOMContentLoaded', initApp);
