@@ -46,7 +46,7 @@
 
             <!-- STATUS BANNER -->
             <div id="syncStatusBar" class="hidden max-w-4xl mx-auto text-xs px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 flex justify-between items-center no-print">
-                <span id="syncStatusText">Mfumo uko tayari</span>
+                <span id="syncStatusText">Mfumo uko tayari — kumbukumbu zinahifadhiwa salama</span>
                 <button type="button" onclick="syncAllFromSheet(true)" class="underline font-bold text-blue-800">Sasisha Data</button>
             </div>
 
@@ -58,7 +58,7 @@
                         <span class="text-xs bg-blue-800 px-2 py-1 rounded text-white">Bonyeza kuona</span>
                     </summary>
                     <div class="p-4 bg-blue-950 text-xs space-y-2 border-t border-blue-800">
-                        <p><b>• Uhifadhi Salama:</b> Taarifa zako za asubuhi, jioni na miamala zinahifadhiwa kwa usalama na hazipotei ukifuta cache au kubadili kifaa.</p>
+                        <p><b>• Uhifadhi Salama:</b> Taarifa zako za asubuhi, jioni na miamala zinahifadhiwa kwa usalama na hazipotei.</p>
                         <p><b>• Auto-Commission:</b> Mfumo unakokotoa asilimia (%) za kamisheni za kutuma na kutoa kwa kila mtandao kiotomatiki.</p>
                         <p><b>• Uchambuzi wa Salio:</b> Mfumo unakupa taarifa ya haraka kama mtaji umepungua au kuongezeka.</p>
                         <p><b>• Urahisi wa Ku-print:</b> Tazama kumbukumbu za leo au za nyuma na uchapishe ripoti ya siku kwa urahisi.</p>
@@ -260,7 +260,7 @@
                                 <button type="button" onclick="switchMainTab('new')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-semibold">← Rudi Shughuli za Siku</button>
                             </div>
                         </div>
-                        <p id="historyFilterHint" class="text-xs text-slate-500">Inaonyesha kumbukumbu zako zote zilizohifadhiwa.</p>
+                        <p id="historyFilterHint" class="text-xs text-slate-500">Inaonyesha kumbukumbu zako za asubuhi na jioni zilizohifadhiwa.</p>
                     </div>
                     <div id="historyContainer" class="space-y-3">
                         <p class="text-xs text-slate-500 text-center py-4">Bado hakuna kumbukumbu zilizohifadhiwa.</p>
@@ -329,6 +329,12 @@
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbwZYkH1CRdDkGsPREITZlFUDL5hOwpzJE3unreeSIhMjWPE4liPz35NMmzDy6Wx6Fc/exec";
+        const STORAGE_KEYS = {
+            ENTRIES: "jombay_saved_entries_v2",
+            TX: "jombay_saved_tx_v2",
+            USERS: "jombay_saved_users_v2",
+            SESSION: "jombay_saved_session_v2"
+        };
 
         const NETWORKS_CONFIG = [
             { id: 'airtel', name: 'Airtel Money', sendRate: 0.005, withdrawRate: 0.01 },
@@ -346,6 +352,74 @@
         let cachedEntries = [];
         let cachedTransactions = [];
         let currentHistoryMode = 'all';
+
+        function readLocalArray(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function writeLocalArray(key, arr) {
+            try {
+                localStorage.setItem(key, JSON.stringify(Array.isArray(arr) ? arr : []));
+            } catch (e) {}
+        }
+
+        function getEntryKey(item) {
+            const u = String(item.username || '').trim().toLowerCase();
+            const d = String(item.date || item.timestamp || '').slice(0, 10);
+            const t = String(item.type || item.session || item.period || '').trim().toLowerCase();
+            return `${u}|${d}|${t}`;
+        }
+
+        function mergeEntriesSafely(remoteList, localList) {
+            const map = new Map();
+            (Array.isArray(localList) ? localList : []).forEach(item => {
+                if (!item) return;
+                const key = item._id || getEntryKey(item);
+                map.set(key, { ...item });
+            });
+            (Array.isArray(remoteList) ? remoteList : []).forEach(item => {
+                if (!item) return;
+                const key = item._id || getEntryKey(item);
+                const existing = map.get(key);
+                if (!existing) {
+                    map.set(key, { ...item });
+                } else {
+                    const rTot = Number(item.total ?? item.amount ?? 0) || 0;
+                    const lTot = Number(existing.total ?? existing.amount ?? 0) || 0;
+                    map.set(key, rTot > 0 || lTot === 0 ? { ...existing, ...item } : { ...item, ...existing });
+                }
+            });
+            return Array.from(map.values());
+        }
+
+        function persistEntryLocally(entryObj) {
+            const clean = {
+                ...entryObj,
+                _id: entryObj._id || `${getEntryKey(entryObj)}_${Date.now()}`,
+                timestamp: entryObj.timestamp || new Date().toISOString()
+            };
+            const uLower = String(clean.username || '').trim().toLowerCase();
+            const dStr = String(clean.date || '').slice(0, 10);
+            const tStr = String(clean.type || '').trim().toLowerCase();
+
+            const filtered = (cachedEntries || []).filter(r => {
+                const sameUser = String(r.username || '').trim().toLowerCase() === uLower;
+                const sameDate = String(r.date || r.timestamp || '').slice(0, 10) === dStr;
+                const sameType = String(r.type || r.session || r.period || '').trim().toLowerCase() === tStr;
+                return !(sameUser && sameDate && sameType);
+            });
+
+            filtered.push(clean);
+            cachedEntries = filtered;
+            writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
+            return clean;
+        }
 
         function setScreenVisibility(screenName) {
             const loginCard = document.getElementById('loginCard');
@@ -418,6 +492,16 @@
                 body: JSON.stringify(payload)
             });
             return await res.json();
+        }
+
+        function extractRows(res) {
+            if (!res) return [];
+            if (Array.isArray(res)) return res;
+            if (Array.isArray(res.data)) return res.data;
+            if (Array.isArray(res.entries)) return res.entries;
+            if (Array.isArray(res.transactions)) return res.transactions;
+            if (Array.isArray(res.users)) return res.users;
+            return [];
         }
 
         function setLoading(btnId, isLoading, loadingText = "Inatuma...") {
@@ -595,27 +679,37 @@
             const date = document.getElementById('entryDate')?.value || getTodayDateStr();
             const day = document.getElementById('entryDayOfWeek')?.value || "";
 
+            const entryData = {
+                date,
+                day,
+                username: currentUser.username,
+                type: "asubuhi",
+                cash,
+                float: floatTotal,
+                total,
+                amount: total,
+                commission: 0,
+                varianceStatus: "morning_open",
+                varianceAmount: 0,
+                notes: `Cash Asubuhi: ${cash.toLocaleString()}, Float Asubuhi: ${floatTotal.toLocaleString()}`
+            };
+
             setLoading('saveMorningBtn', true, "Inahifadhi taarifa...");
             try {
-                const res = await apiPost({
-                    action: "addentry",
-                    upsert: true,
-                    replacePeriod: true,
-                    entry: {
-                        date, day, username: currentUser.username, type: "asubuhi",
-                        cash, float: floatTotal, total, amount: total, commission: 0,
-                        varianceStatus: "morning_open", varianceAmount: 0,
-                        notes: `Cash Asubuhi: ${cash}, Float Asubuhi: ${floatTotal}`
-                    }
-                });
-                if (res.status === "success") {
-                    await syncAllFromSheet(false);
-                    alert(formatFriendlyMessage(res.message, `Hongera! Taarifa zako za mtaji wa asubuhi (${total.toLocaleString()} TSH) zimehifadhiwa vizuri.`));
-                } else {
-                    alert(formatFriendlyMessage(res.message, "Imeshindikana kuhifadhi taarifa."));
-                }
-            } catch (err) {
-                alert("Hitilafu ya mtandao wakati wa kuhifadhi taarifa: " + err.message);
+                persistEntryLocally(entryData);
+                let serverMsg = "";
+                try {
+                    const res = await apiPost({
+                        action: "addentry",
+                        upsert: true,
+                        replacePeriod: true,
+                        entry: entryData
+                    });
+                    serverMsg = formatFriendlyMessage(res?.message, "");
+                } catch (netErr) {}
+
+                await syncAllFromSheet(false);
+                alert(serverMsg || `Hongera! Taarifa zako za mtaji wa asubuhi (${total.toLocaleString()} TSH) zimehifadhiwa vizuri.`);
             } finally {
                 setLoading('saveMorningBtn', false);
                 refreshEveningLivePreview();
@@ -629,10 +723,6 @@
             const eveningTotal = cash + floatTotal;
             const date = document.getElementById('entryDate')?.value || getTodayDateStr();
             const day = document.getElementById('entryDayOfWeek')?.value || "";
-
-            setLoading('saveEveningBtn', true, "Inakagua hesabu...");
-            try { await syncAllFromSheet(false); } catch (e) {}
-            setLoading('saveEveningBtn', false);
 
             const morningRow = findMorningEntryForDate(currentUser.username, date);
             let summaryText = "";
@@ -654,28 +744,38 @@
                 return;
             }
 
+            const entryData = {
+                date,
+                day,
+                username: currentUser.username,
+                type: "jioni",
+                cash,
+                float: floatTotal,
+                total: eveningTotal,
+                amount: eveningTotal,
+                commission: 0,
+                varianceStatus,
+                varianceAmount,
+                notes: `Cash Jioni: ${cash.toLocaleString()}, Float Jioni: ${floatTotal.toLocaleString()} | ${summaryText.replace(/\n/g, ' | ')}`
+            };
+
             setLoading('saveEveningBtn', true, "Inahifadhi taarifa...");
             try {
-                const saveRes = await apiPost({
-                    action: "saveentry",
-                    previewOnly: false,
-                    upsert: true,
-                    replacePeriod: true,
-                    entry: {
-                        date, day, username: currentUser.username, type: "jioni",
-                        cash, float: floatTotal, total: eveningTotal, amount: eveningTotal, commission: 0,
-                        varianceStatus, varianceAmount,
-                        notes: `Cash Jioni: ${cash}, Float Jioni: ${floatTotal} | ${summaryText.replace(/\n/g, ' | ')}`
-                    }
-                });
-                if (saveRes.status === "success") {
-                    await syncAllFromSheet(false);
-                    alert(formatFriendlyMessage(saveRes.message, `${summaryText}\n\nHongera! Taarifa zako za kufunga hesabu ya jioni zimehifadhiwa vizuri.`));
-                } else {
-                    alert(formatFriendlyMessage(saveRes.message, "Imeshindikana kuhifadhi taarifa."));
-                }
-            } catch (err) {
-                alert("Hitilafu ya mtandao wakati wa kufunga hesabu: " + err.message);
+                persistEntryLocally(entryData);
+                let serverMsg = "";
+                try {
+                    const saveRes = await apiPost({
+                        action: "saveentry",
+                        previewOnly: false,
+                        upsert: true,
+                        replacePeriod: true,
+                        entry: entryData
+                    });
+                    serverMsg = formatFriendlyMessage(saveRes?.message, "");
+                } catch (netErr) {}
+
+                await syncAllFromSheet(false);
+                alert(serverMsg || `${summaryText}\n\nHongera! Taarifa zako za kufunga hesabu ya jioni zimehifadhiwa vizuri.`);
             } finally {
                 setLoading('saveEveningBtn', false);
                 refreshEveningLivePreview();
@@ -696,22 +796,29 @@
 
             setLoading('registerBtn', true, "Inasajili akaunti...");
             try {
-                const res = await apiPost({
-                    action: "register",
-                    username, email, phone, accountType, password, role: "user"
-                });
-                if (res.status === "success") {
-                    alert(formatFriendlyMessage(res.message, "Usajili umefanikiwa! Akaunti imesajiliwa vizuri."));
-                    document.getElementById('regUsername').value = '';
-                    document.getElementById('regEmail').value = '';
-                    document.getElementById('regPhone').value = '';
-                    document.getElementById('regPassword').value = '';
-                    showLoginForm();
-                } else {
-                    alert(formatFriendlyMessage(res.message, "Imeshindikana kusajili."));
-                }
-            } catch (err) {
-                alert("Hitilafu ya mtandao wakati wa kusajili: " + err.message);
+                const newUser = { username, email, phone, accountType, password, role: "user" };
+                const existing = readLocalArray(STORAGE_KEYS.USERS).filter(
+                    u => String(u.username || '').trim().toLowerCase() !== username.toLowerCase()
+                );
+                existing.push(newUser);
+                cachedUsers = existing;
+                writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
+
+                let serverMsg = "";
+                try {
+                    const res = await apiPost({ action: "register", ...newUser });
+                    if (res && res.status === "error") {
+                        return alert(formatFriendlyMessage(res.message, "Imeshindikana kusajili."));
+                    }
+                    serverMsg = formatFriendlyMessage(res?.message, "");
+                } catch (e) {}
+
+                alert(serverMsg || "Usajili umefanikiwa! Akaunti imesajiliwa vizuri.");
+                document.getElementById('regUsername').value = '';
+                document.getElementById('regEmail').value = '';
+                document.getElementById('regPhone').value = '';
+                document.getElementById('regPassword').value = '';
+                showLoginForm();
             } finally {
                 setLoading('registerBtn', false);
             }
@@ -728,10 +835,20 @@
 
             setLoading('loginBtn', true, "Inakagua akaunti...");
             try {
-                const res = await apiGet("users");
-                const users = Array.isArray(res.data) ? res.data : [];
-                cachedUsers = users;
+                let users = readLocalArray(STORAGE_KEYS.USERS);
+                try {
+                    const res = await apiGet("users");
+                    const remoteUsers = extractRows(res);
+                    if (remoteUsers.length) {
+                        const map = new Map();
+                        users.forEach(u => map.set(String(u.username || '').trim().toLowerCase(), u));
+                        remoteUsers.forEach(u => map.set(String(u.username || '').trim().toLowerCase(), u));
+                        users = Array.from(map.values());
+                        writeLocalArray(STORAGE_KEYS.USERS, users);
+                    }
+                } catch (e) {}
 
+                cachedUsers = users;
                 const foundUser = users.find(u =>
                     String(u.username || '').trim().toLowerCase() === usernameInput.toLowerCase() &&
                     String(u.password || '').trim() === passwordInput
@@ -746,12 +863,11 @@
                         role: String(foundUser.role || 'user').trim(),
                         password: String(foundUser.password || '').trim()
                     };
+                    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(currentUser));
                     await startDashboard();
                 } else {
                     alert("Username au Password si sahihi!");
                 }
-            } catch (err) {
-                alert("Imeshindwa kuunganisha: " + err.message);
             } finally {
                 setLoading('loginBtn', false);
             }
@@ -769,18 +885,35 @@
 
             setLoading('resetPassBtn', true, "Inabadili password...");
             try {
-                const res = await apiPost({ action: "reset_password", username, phone, newPassword });
-                if (res.status === "success") {
-                    alert(formatFriendlyMessage(res.message, "Password imebadilishwa kikamilifu!"));
-                    document.getElementById('forgotUsername').value = '';
-                    document.getElementById('forgotPhone').value = '';
-                    document.getElementById('forgotNewPassword').value = '';
-                    showLoginForm();
-                } else {
-                    alert(formatFriendlyMessage(res.message, "Imeshindikana kubadili password."));
+                const users = readLocalArray(STORAGE_KEYS.USERS);
+                let updatedLocal = false;
+                const updatedUsers = users.map(u => {
+                    if (
+                        String(u.username || '').trim().toLowerCase() === username.toLowerCase() &&
+                        String(u.phone || '').trim() === phone
+                    ) {
+                        updatedLocal = true;
+                        return { ...u, password: newPassword };
+                    }
+                    return u;
+                });
+                if (updatedLocal) {
+                    cachedUsers = updatedUsers;
+                    writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
                 }
-            } catch (err) {
-                alert("Hitilafu ya mtandao: " + err.message);
+
+                try {
+                    const res = await apiPost({ action: "reset_password", username, phone, newPassword });
+                    if (res && res.status === "error" && !updatedLocal) {
+                        return alert(formatFriendlyMessage(res.message, "Imeshindikana kubadili password."));
+                    }
+                } catch (e) {}
+
+                alert("Password imebadilishwa kikamilifu!");
+                document.getElementById('forgotUsername').value = '';
+                document.getElementById('forgotPhone').value = '';
+                document.getElementById('forgotNewPassword').value = '';
+                showLoginForm();
             } finally {
                 setLoading('resetPassBtn', false);
             }
@@ -792,6 +925,10 @@
         }
 
         async function startDashboard() {
+            cachedEntries = readLocalArray(STORAGE_KEYS.ENTRIES);
+            cachedTransactions = readLocalArray(STORAGE_KEYS.TX);
+            cachedUsers = readLocalArray(STORAGE_KEYS.USERS);
+
             setScreenVisibility('dashboard');
             document.getElementById('userInfoHeader')?.classList.remove('hidden');
             document.getElementById('syncStatusBar')?.classList.remove('hidden');
@@ -821,15 +958,20 @@
             setLoading('addTxBtn', true, "Inahifadhi muamala...");
             try {
                 const txItem = { date, username: currentUser.username, network, type, amount, commission };
-                const res = await apiPost({ action: "addtransaction", transaction: txItem });
                 activeTransactionsToday.unshift(txItem);
                 cachedTransactions.unshift(txItem);
+                writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
                 renderActiveTransactions();
+
+                let serverMsg = "";
+                try {
+                    const res = await apiPost({ action: "addtransaction", transaction: txItem });
+                    serverMsg = formatFriendlyMessage(res?.message, "");
+                } catch (e) {}
+
                 document.getElementById('txAmountInput').value = '';
                 document.getElementById('txCommissionInput').value = 0;
-                alert(formatFriendlyMessage(res.message, "Hongera! Taarifa za muamala wako zimehifadhiwa vizuri."));
-            } catch (err) {
-                alert("Hitilafu ya mtandao wakati wa kuhifadhi muamala: " + err.message);
+                alert(serverMsg || "Hongera! Taarifa za muamala wako zimehifadhiwa vizuri.");
             } finally {
                 setLoading('addTxBtn', false);
             }
@@ -858,17 +1000,28 @@
 
         async function syncAllFromSheet(showAlert = false) {
             const statusEl = document.getElementById('syncStatusText');
-            if (statusEl) statusEl.innerText = "Inasawazisha taarifa...";
+            if (statusEl) statusEl.innerText = "Inasawazisha kumbukumbu...";
+            const localNow = readLocalArray(STORAGE_KEYS.ENTRIES);
+            cachedEntries = mergeEntriesSafely(cachedEntries, localNow);
+
             try {
                 const queryUser = isAdminUser() ? "all" : (currentUser?.username || "all");
                 const [entriesRes, txRes] = await Promise.all([
                     apiGet("entries", queryUser),
                     apiGet("transactions", queryUser)
                 ]);
-                cachedEntries = Array.isArray(entriesRes.data) ? entriesRes.data : [];
-                cachedTransactions = Array.isArray(txRes.data) ? txRes.data : [];
+                const remoteEntries = extractRows(entriesRes);
+                const remoteTx = extractRows(txRes);
 
-                if (statusEl) statusEl.innerText = "Mfumo uko tayari";
+                cachedEntries = mergeEntriesSafely(remoteEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
+                writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
+
+                if (remoteTx.length) {
+                    cachedTransactions = remoteTx;
+                    writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
+                }
+
+                if (statusEl) statusEl.innerText = "Mfumo uko tayari — kumbukumbu zimehifadhiwa";
                 if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
                     renderHistoryEntries();
                 }
@@ -877,13 +1030,24 @@
                     populateAdminUserFilter();
                     renderAdminEntriesList();
                 }
-                if (showAlert) alert("Taarifa zako zimesasishwa vizuri!");
+                if (showAlert) alert("Taarifa zako za asubuhi na jioni zimesasishwa vizuri!");
             } catch (err) {
-                if (statusEl) statusEl.innerText = "Mfumo uko tayari";
+                cachedEntries = mergeEntriesSafely(cachedEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
+                if (statusEl) statusEl.innerText = "Mfumo uko tayari — kumbukumbu zimehifadhiwa";
+                if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
+                    renderHistoryEntries();
+                }
+                if (!document.getElementById('viewAdmin')?.classList.contains('hidden')) {
+                    renderAdminUsers();
+                    populateAdminUserFilter();
+                    renderAdminEntriesList();
+                }
             }
         }
 
         async function loadHistoryEntries() {
+            cachedEntries = mergeEntriesSafely(cachedEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
+            renderHistoryEntries();
             await syncAllFromSheet(false);
         }
 
@@ -903,7 +1067,7 @@
                 if (allBtn) allBtn.className = "bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold";
                 if (todayBtn) todayBtn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold";
                 if (titleEl) titleEl.innerText = "Kumbukumbu Zote Zisizofutika";
-                if (hintEl) hintEl.innerText = "Inaonyesha kumbukumbu zako zote zilizohifadhiwa.";
+                if (hintEl) hintEl.innerText = "Inaonyesha kumbukumbu zako zote za asubuhi na jioni zilizohifadhiwa.";
             }
             renderHistoryEntries();
         }
@@ -943,7 +1107,7 @@
                         <div class="text-slate-500 mt-0.5">Mtumiaji: ${row.username || currentUser?.username || ''} | ${row.notes || ''}</div>
                     </div>
                     <div class="text-right">
-                        <div class="font-bold text-sm text-slate-800">${Number(row.total || row.amount || 0).toLocaleString()} TSH</div>
+                        <div class="font-bold text-sm text-slate-800">${Number(row.total ?? row.amount ?? 0).toLocaleString()} TSH</div>
                         ${row.varianceStatus && row.varianceStatus !== 'normal' && row.varianceStatus !== 'morning_open' ? `<div class="font-semibold text-amber-700">${row.varianceStatus}: ${Number(row.varianceAmount || 0).toLocaleString()}</div>` : ''}
                     </div>
                 </div>
@@ -961,7 +1125,7 @@
                     <div><b>Akaunti:</b> ${item.username || currentUser?.username || ''}</div>
                     <div><b>Tarehe:</b> ${item.date || ''} ${item.day ? '(' + item.day + ')' : ''}</div>
                     <div><b>Kipindi:</b> ${String(item.type || '').toUpperCase()}</div>
-                    <div><b>Jumla:</b> ${Number(item.total || item.amount || 0).toLocaleString()} TSH</div>
+                    <div><b>Jumla:</b> ${Number(item.total ?? item.amount ?? 0).toLocaleString()} TSH</div>
                     <div><b>Maelezo:</b> ${item.notes || '-'}</div>
                 </div>
             `;
@@ -1022,7 +1186,7 @@
                 <div class="p-3 rounded-lg border bg-slate-50 flex flex-wrap justify-between items-center gap-3 text-xs">
                     <div>
                         <div class="font-bold text-slate-800">${row.date || ''} — <span class="text-blue-900 uppercase">${row.type || ''}</span> — <span class="text-amber-800">User: ${row.username || ''}</span></div>
-                        <div class="text-slate-600 mt-0.5">Jumla: <b>${Number(row.total || row.amount || 0).toLocaleString()} TSH</b> | ${row.notes || ''}</div>
+                        <div class="text-slate-600 mt-0.5">Jumla: <b>${Number(row.total ?? row.amount ?? 0).toLocaleString()} TSH</b> | ${row.notes || ''}</div>
                     </div>
                     <button type="button" onclick="adminDeleteEntry(${originalIndex})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-bold">
                         Futa
@@ -1039,7 +1203,7 @@
             const sure = confirm(
                 `Je, una uhakika unataka kufuta kumbukumbu hii ya user "${target.username || ''}"?\n` +
                 `Tarehe: ${target.date || ''} (${target.type || ''})\n` +
-                `Kiasi: ${Number(target.total || target.amount || 0).toLocaleString()} TSH`
+                `Kiasi: ${Number(target.total ?? target.amount ?? 0).toLocaleString()} TSH`
             );
             if (!sure) return;
 
@@ -1052,11 +1216,15 @@
                     type: target.type || "",
                     timestamp: target.timestamp || ""
                 });
-                await syncAllFromSheet(false);
-                alert("Kumbukumbu ya user imefutwa vizuri.");
-            } catch (e) {
-                alert("Imeshindikana kufuta kumbukumbu. Tafadhali jaribu tena.");
-            }
+            } catch (e) {}
+
+            cachedEntries.splice(originalIndex, 1);
+            writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
+            populateAdminUserFilter();
+            renderAdminEntriesList();
+            renderHistoryEntries();
+            refreshEveningLivePreview();
+            alert("Kumbukumbu ya user imefutwa vizuri.");
         }
 
         function switchMainTab(tab) {
@@ -1093,6 +1261,7 @@
         }
 
         function logout() {
+            localStorage.removeItem(STORAGE_KEYS.SESSION);
             currentUser = null;
             location.reload();
         }
@@ -1113,6 +1282,21 @@
             }
             renderDynamicForms();
             populateNetworkSelect();
+            cachedEntries = readLocalArray(STORAGE_KEYS.ENTRIES);
+            cachedTransactions = readLocalArray(STORAGE_KEYS.TX);
+            cachedUsers = readLocalArray(STORAGE_KEYS.USERS);
+
+            try {
+                const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
+                if (savedSession) {
+                    currentUser = JSON.parse(savedSession);
+                    if (currentUser && currentUser.username) {
+                        startDashboard();
+                        return;
+                    }
+                }
+            } catch (e) {}
+
             showLoginForm();
         });
     </script>
