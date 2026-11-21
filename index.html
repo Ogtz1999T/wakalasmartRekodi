@@ -210,6 +210,7 @@
                                 <input type="number" id="cashNight" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
                             </div>
                             <div id="eveningFloatContainer" class="space-y-4 pt-2"></div>
+                            <div id="eveningVarianceBox" class="hidden p-3.5 rounded-xl border text-xs font-semibold space-y-1"></div>
                         </div>
                         <button id="saveEveningBtn" onclick="saveEveningEntry()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-blue-950 font-bold py-3.5 rounded-lg text-base">Kamilisha na Hifadhi Funga Siku</button>
                     </div>
@@ -339,6 +340,9 @@
             if (!isNaN(d.getTime())) {
                 document.getElementById('entryDayOfWeek').value = days[d.getDay()];
             }
+            if (currentUser) {
+                refreshEveningLivePreview();
+            }
         }
 
         // API HELPERS
@@ -370,6 +374,324 @@
                 btn.innerText = btn.dataset.origText || btn.innerText;
                 btn.disabled = false;
                 btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            }
+        }
+
+        function renderDynamicForms() {
+            const morningEl = document.getElementById('morningFloatContainer');
+            const eveningEl = document.getElementById('eveningFloatContainer');
+            if (!morningEl || !eveningEl) return;
+
+            morningEl.innerHTML = NETWORKS_CONFIG.map(net => `
+                <div class="bg-white rounded-xl shadow-sm border p-3 flex justify-between items-center gap-3">
+                    <label class="text-xs font-bold text-slate-700">${net.name} (Float Asubuhi)</label>
+                    <input type="number" data-net="${net.id}" class="morning-float-input w-40 border rounded-lg p-2 text-sm font-bold text-right" placeholder="0">
+                </div>
+            `).join('');
+
+            eveningEl.innerHTML = NETWORKS_CONFIG.map(net => `
+                <div class="bg-slate-50 rounded-lg border p-3 flex justify-between items-center gap-3">
+                    <label class="text-xs font-bold text-slate-700">${net.name} (Float Jioni)</label>
+                    <input type="number" data-net="${net.id}" oninput="refreshEveningLivePreview()" class="evening-float-input w-40 border rounded-lg p-2 text-sm font-bold text-right" placeholder="0">
+                </div>
+            `).join('');
+
+            document.getElementById('cashNight')?.addEventListener('input', refreshEveningLivePreview);
+        }
+
+        function populateNetworkSelect() {
+            const sel = document.getElementById('txNetworkSelect');
+            if (!sel) return;
+            sel.innerHTML = NETWORKS_CONFIG.map(net =>
+                `<option value="${net.id}">${net.name}</option>`
+            ).join('');
+            updateCommissionPreview();
+        }
+
+        function updateCommissionPreview() {
+            const netId = document.getElementById('txNetworkSelect')?.value;
+            const txType = document.getElementById('txTypeSelect')?.value;
+            const amount = Number(document.getElementById('txAmountInput')?.value) || 0;
+            const commEl = document.getElementById('txCommissionInput');
+            if (!commEl) return;
+
+            const net = NETWORKS_CONFIG.find(n => n.id === netId);
+            if (!net || amount <= 0) {
+                commEl.value = 0;
+                return;
+            }
+            const rate = txType === 'withdraw' ? net.withdrawRate : net.sendRate;
+            commEl.value = Math.round(amount * rate);
+        }
+
+        function sumInputs(selector) {
+            return Array.from(document.querySelectorAll(selector)).reduce(
+                (acc, el) => acc + (Number(el.value) || 0),
+                0
+            );
+        }
+
+        function findMorningEntryForDate(username, dateStr) {
+            const uLower = String(username || '').trim().toLowerCase();
+            const targetDate = String(dateStr || '').trim();
+            const matches = (cachedEntries || []).filter(r => {
+                const rUser = String(r.username || '').trim().toLowerCase();
+                const rType = String(r.type || r.session || r.period || '').trim().toLowerCase();
+                const rDate = String(r.date || r.timestamp || '').slice(0, 10);
+                const isMorning =
+                    rType.includes('asubuhi') ||
+                    rType.includes('morning') ||
+                    rType.includes('mtaji');
+                return rUser === uLower && isMorning && rDate === targetDate;
+            });
+            return matches.length ? matches[matches.length - 1] : null;
+        }
+
+        function computeVarianceDetails(morningAmount, eveningAmount, dateStr) {
+            const mAmt = Number(morningAmount) || 0;
+            const eAmt = Number(eveningAmount) || 0;
+            const diff = eAmt - mAmt;
+
+            if (diff < 0) {
+                const shortage = Math.abs(diff);
+                return {
+                    hasMorning: true,
+                    morningAmount: mAmt,
+                    eveningAmount: eAmt,
+                    difference: diff,
+                    shortage,
+                    surplus: 0,
+                    status: 'shortage',
+                    label: 'PUNGUFU',
+                    amountText: `${shortage.toLocaleString()} TSH`,
+                    message:
+                        `TAARIFA YA HESABU (${dateStr}):\n` +
+                        `• Hesabu ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
+                        `• Hesabu ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
+                        `• Kuna PUNGUFU la: ${shortage.toLocaleString()} TSH`
+                };
+            }
+
+            if (diff > 0) {
+                return {
+                    hasMorning: true,
+                    morningAmount: mAmt,
+                    eveningAmount: eAmt,
+                    difference: diff,
+                    shortage: 0,
+                    surplus: diff,
+                    status: 'surplus',
+                    label: 'ONGEZEKO',
+                    amountText: `${diff.toLocaleString()} TSH`,
+                    message:
+                        `TAARIFA YA HESABU (${dateStr}):\n` +
+                        `• Hesabu ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
+                        `• Hesabu ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
+                        `• Kuna ONGEZEKO la: ${diff.toLocaleString()} TSH`
+                };
+            }
+
+            return {
+                hasMorning: true,
+                morningAmount: mAmt,
+                eveningAmount: eAmt,
+                difference: 0,
+                shortage: 0,
+                surplus: 0,
+                status: 'balanced',
+                label: 'IMELINGANA',
+                amountText: '0 TSH',
+                message:
+                    `TAARIFA YA HESABU (${dateStr}):\n` +
+                    `• Hesabu ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
+                    `• Hesabu ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
+                    `• Hesabu IMELINGANA (hakuna pungufu wala ongezeko).`
+            };
+        }
+
+        function refreshEveningLivePreview() {
+            const box = document.getElementById('eveningVarianceBox');
+            if (!box || !currentUser) return;
+
+            const dateStr = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+            const morningRow = findMorningEntryForDate(currentUser.username, dateStr);
+            const cashNight = Number(document.getElementById('cashNight')?.value) || 0;
+            const floatNight = sumInputs('.evening-float-input');
+            const eveningTotal = cashNight + floatNight;
+
+            if (!morningRow) {
+                box.className = "p-3.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-semibold space-y-1";
+                box.classList.remove('hidden');
+                box.innerHTML = `
+                    <div>⚠️ Hakuna rekodi ya hesabu ya <b>Asubuhi</b> kwa tarehe <b>${dateStr}</b>.</div>
+                    <div>Hesabu ya Jioni ya sasa: <b>${eveningTotal.toLocaleString()} TSH</b></div>
+                `;
+                return;
+            }
+
+            const morningTotal = Number(morningRow.total ?? morningRow.amount ?? 0) || 0;
+            const v = computeVarianceDetails(morningTotal, eveningTotal, dateStr);
+
+            let styleClass = "border-blue-300 bg-blue-50 text-blue-900";
+            if (v.status === 'shortage') styleClass = "border-red-300 bg-red-50 text-red-900";
+            if (v.status === 'surplus') styleClass = "border-emerald-300 bg-emerald-50 text-emerald-900";
+
+            box.className = `p-3.5 rounded-xl border ${styleClass} text-xs font-semibold space-y-1`;
+            box.classList.remove('hidden');
+            box.innerHTML = `
+                <div>Hesabu ya Asubuhi (${dateStr}): <b>${morningTotal.toLocaleString()} TSH</b></div>
+                <div>Hesabu ya Jioni: <b>${eveningTotal.toLocaleString()} TSH</b></div>
+                <div>Hali ya Hesabu: <b>${v.label} — ${v.amountText}</b></div>
+            `;
+        }
+
+        function updateLocalEntrySinglePeriod(newEntry) {
+            const uLower = String(newEntry.username || '').trim().toLowerCase();
+            const dStr = String(newEntry.date || '').slice(0, 10);
+            const pStr = String(newEntry.type || '').trim().toLowerCase();
+
+            cachedEntries = (cachedEntries || []).filter(r => {
+                const rUser = String(r.username || '').trim().toLowerCase();
+                const rDate = String(r.date || r.timestamp || '').slice(0, 10);
+                const rType = String(r.type || '').trim().toLowerCase();
+                return !(rUser === uLower && rDate === dStr && rType === pStr);
+            });
+
+            cachedEntries.push({
+                ...newEntry,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
+        }
+
+        async function saveMorningEntry() {
+            if (!currentUser) {
+                alert("Tafadhali ingia kwanza.");
+                return;
+            }
+
+            const cash = Number(document.getElementById('cashMorning')?.value) || 0;
+            const floatTotal = sumInputs('.morning-float-input');
+            const total = cash + floatTotal;
+            const date = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+            const day = document.getElementById('entryDayOfWeek')?.value || "";
+
+            setLoading('saveMorningBtn', true, "Inahifadhi mtaji wa asubuhi...");
+            try {
+                const payload = {
+                    action: "addentry",
+                    upsert: true,
+                    replacePeriod: true,
+                    entry: {
+                        date,
+                        day,
+                        username: currentUser.username,
+                        type: "asubuhi",
+                        cash,
+                        float: floatTotal,
+                        total,
+                        amount: total,
+                        commission: 0,
+                        varianceStatus: "morning_open",
+                        varianceAmount: 0,
+                        notes: `Cash Asubuhi: ${cash}, Float Asubuhi: ${floatTotal}`
+                    }
+                };
+
+                const res = await apiPost(payload);
+                if (res.status === "success") {
+                    updateLocalEntrySinglePeriod(payload.entry);
+                    alert(res.message || `Mtaji wa asubuhi (${total.toLocaleString()} TSH) umehifadhiwa!`);
+                    refreshEveningLivePreview();
+                } else {
+                    alert(res.message || "Imeshindikana kuhifadhi mtaji wa asubuhi.");
+                }
+            } catch (err) {
+                alert("Hitilafu wakati wa kuhifadhi asubuhi: " + err.message);
+            } finally {
+                setLoading('saveMorningBtn', false);
+            }
+        }
+
+        async function saveEveningEntry() {
+            if (!currentUser) {
+                alert("Tafadhali ingia kwanza.");
+                return;
+            }
+
+            const cash = Number(document.getElementById('cashNight')?.value) || 0;
+            const floatTotal = sumInputs('.evening-float-input');
+            const eveningTotal = cash + floatTotal;
+            const date = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+            const day = document.getElementById('entryDayOfWeek')?.value || "";
+
+            setLoading('saveEveningBtn', true, "Inavuta hesabu ya asubuhi na kukagua...");
+            try {
+                await syncAllFromSheet(false);
+                const morningRow = findMorningEntryForDate(currentUser.username, date);
+
+                let summaryText = "";
+                let varianceStatus = "no_morning";
+                let varianceAmount = 0;
+
+                if (!morningRow) {
+                    summaryText =
+                        `Hakuna hesabu ya ASUBUHI iliyopatikana kwa tarehe ${date}.\n` +
+                        `Hesabu ya JIONI: ${eveningTotal.toLocaleString()} TSH`;
+                } else {
+                    const morningTotal = Number(morningRow.total ?? morningRow.amount ?? 0) || 0;
+                    const v = computeVarianceDetails(morningTotal, eveningTotal, date);
+                    summaryText = v.message;
+                    varianceStatus = v.status;
+                    varianceAmount = v.difference;
+                }
+
+                setLoading('saveEveningBtn', false);
+
+                const confirmed = confirm(
+                    summaryText + "\n\nJe, unathibitisha kuhifadhi hesabu hii ya jioni (rekodi moja ya siku)?"
+                );
+                if (!confirmed) {
+                    alert("Kuhifadhi kumesitishwa.");
+                    return;
+                }
+
+                setLoading('saveEveningBtn', true, "Inahifadhi hesabu ya jioni...");
+
+                const eveningEntry = {
+                    date,
+                    day,
+                    username: currentUser.username,
+                    type: "jioni",
+                    cash,
+                    float: floatTotal,
+                    total: eveningTotal,
+                    amount: eveningTotal,
+                    commission: 0,
+                    varianceStatus,
+                    varianceAmount,
+                    notes: `Cash Jioni: ${cash}, Float Jioni: ${floatTotal} | ${summaryText.replace(/\n/g, ' | ')}`
+                };
+
+                const saveRes = await apiPost({
+                    action: "saveentry",
+                    previewOnly: false,
+                    upsert: true,
+                    replacePeriod: true,
+                    entry: eveningEntry
+                });
+
+                if (saveRes.status === "success") {
+                    updateLocalEntrySinglePeriod(eveningEntry);
+                    alert(saveRes.message || (summaryText + "\n\nHesabu ya jioni imehifadhiwa!"));
+                    refreshEveningLivePreview();
+                } else {
+                    alert(saveRes.message || "Imeshindikana kuhifadhi hesabu ya jioni.");
+                }
+            } catch (err) {
+                alert("Hitilafu wakati wa kufunga hesabu ya jioni: " + err.message);
+            } finally {
+                setLoading('saveEveningBtn', false);
             }
         }
 
@@ -520,6 +842,66 @@
             }
 
             await syncAllFromSheet(false);
+            refreshEveningLivePreview();
+        }
+
+        async function addTransactionItem() {
+            if (!currentUser) return alert("Tafadhali ingia kwanza.");
+            const network = document.getElementById('txNetworkSelect')?.value || "";
+            const type = document.getElementById('txTypeSelect')?.value || "withdraw";
+            const amount = Number(document.getElementById('txAmountInput')?.value) || 0;
+            const commission = Number(document.getElementById('txCommissionInput')?.value) || 0;
+            const date = document.getElementById('entryDate')?.value || new Date().toISOString().slice(0, 10);
+
+            if (amount <= 0) {
+                return alert("Tafadhali weka kiasi cha pesa.");
+            }
+
+            setLoading('addTxBtn', true, "Inahifadhi muamala...");
+            try {
+                const txItem = {
+                    date,
+                    username: currentUser.username,
+                    network,
+                    type,
+                    amount,
+                    commission
+                };
+                const res = await apiPost({
+                    action: "addtransaction",
+                    transaction: txItem
+                });
+                activeTransactionsToday.unshift(txItem);
+                renderActiveTransactions();
+                document.getElementById('txAmountInput').value = '';
+                document.getElementById('txCommissionInput').value = 0;
+                alert(res.message || "Muamala umehifadhiwa!");
+            } catch (err) {
+                alert("Hitilafu wakati wa kuhifadhi muamala: " + err.message);
+            } finally {
+                setLoading('addTxBtn', false);
+            }
+        }
+
+        function renderActiveTransactions() {
+            const container = document.getElementById('transactionsListContainer');
+            if (!container) return;
+            if (!activeTransactionsToday.length) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>`;
+                return;
+            }
+            container.innerHTML = activeTransactionsToday.map(item => `
+                <div class="py-2 flex justify-between items-center text-xs">
+                    <div>
+                        <span class="font-bold text-blue-900 uppercase">${item.network}</span>
+                        <span class="text-slate-600">(${item.type})</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold">${Number(item.amount).toLocaleString()} TSH</div>
+                        <div class="text-green-700 font-semibold">Comm: ${Number(item.commission).toLocaleString()}</div>
+                    </div>
+                </div>
+            `).join('');
         }
 
         async function syncAllFromSheet(showAlert = false) {
@@ -535,36 +917,105 @@
                 localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
                 localStorage.setItem('jombay_tx_cache', JSON.stringify(cachedTransactions));
 
-                if (statusEl) statusEl.innerText = `Google Sheet imesawazishwa (${cachedEntries.length} entries, ${cachedTransactions.length} miamala)`;
-                if (showAlert) alert("Data imesasishwa kutoka kwenye Google Sheet!");
+                if (statusEl) statusEl.innerText = `Google Sheet imesawazishwa (${cachedEntries.length} entries, ${cachedTransactions.length} tx)`;
+                if (showAlert) alert("Data zimesasishwa kutoka Google Sheet!");
             } catch (err) {
-                cachedEntries = JSON.parse(localStorage.getItem('jombay_entries_cache') || '[]');
-                cachedTransactions = JSON.parse(localStorage.getItem('jombay_tx_cache') || '[]');
-                if (statusEl) statusEl.innerText = "Hali ya offline/cache (imethibitisha data iliyohifadhiwa)";
+                const localSaved = JSON.parse(localStorage.getItem('jombay_entries_cache') || '[]');
+                if (localSaved.length) cachedEntries = localSaved;
+                if (statusEl) statusEl.innerText = "Imeshindwa kusawazisha (inatumia cache ya awali)";
             }
         }
 
-        async function loadAdminUsersTable() {
-            const tbody = document.getElementById('adminUsersTable');
-            tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-xs text-slate-500">Inapakia watumiaji kutoka Google Sheet...</td></tr>`;
-            try {
-                const res = await apiGet("users");
-                const users = Array.isArray(res.data) ? res.data : [];
-                localStorage.setItem('jombay_users_cache', JSON.stringify(users));
-                tbody.innerHTML = '';
-                users.forEach(u => {
-                    tbody.innerHTML += `
-                        <tr class="border-b hover:bg-slate-50 text-xs">
-                            <td class="p-3 font-bold text-blue-900">${u.username || ''}</td>
-                            <td class="p-3">${u.accountType || ''}</td>
-                            <td class="p-3">${u.phone || '-'}</td>
-                            <td class="p-3 font-mono text-red-600 font-bold">${u.password || ''}</td>
-                        </tr>
-                    `;
-                });
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-xs text-red-600">Imeshindwa kupakia watumiaji: ${err.message}</td></tr>`;
+        function switchMainTab(tab) {
+            ['new', 'history', 'admin'].forEach(t => {
+                document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`)?.classList.add('hidden');
+            });
+            if (tab === 'new') {
+                document.getElementById('viewNew')?.classList.remove('hidden');
+                refreshEveningLivePreview();
             }
+            if (tab === 'history') {
+                document.getElementById('viewHistory')?.classList.remove('hidden');
+                loadHistoryEntries();
+            }
+            if (tab === 'admin') {
+                document.getElementById('viewAdmin')?.classList.remove('hidden');
+                renderAdminUsers();
+            }
+        }
+
+        function switchSubTab(num) {
+            [1, 2, 3].forEach(i => {
+                document.getElementById(`section${i}`)?.classList.add('hidden');
+                const btn = document.getElementById(`subTab${i}`);
+                if (btn) {
+                    btn.className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+                }
+            });
+            document.getElementById(`section${num}`)?.classList.remove('hidden');
+            const activeBtn = document.getElementById(`subTab${num}`);
+            if (activeBtn) {
+                activeBtn.className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+            }
+            if (num === 2) {
+                refreshEveningLivePreview();
+            }
+        }
+
+        function loadHistoryEntries() {
+            const container = document.getElementById('historyContainer');
+            if (!container) return;
+            if (!cachedEntries.length) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Bado hakuna kumbukumbu zilizohifadhiwa.</p>`;
+                return;
+            }
+            container.innerHTML = cachedEntries.slice().reverse().map(row => `
+                <div class="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center text-xs">
+                    <div>
+                        <div class="font-bold text-blue-900">${row.date || ''} ${row.day ? '(' + row.day + ')' : ''} — <span class="uppercase">${row.type || ''}</span></div>
+                        <div class="text-slate-500 mt-0.5">Mtumiaji: ${row.username || ''} | ${row.notes || ''}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-sm text-slate-800">${Number(row.total || row.amount || 0).toLocaleString()} TSH</div>
+                        ${row.varianceStatus && row.varianceStatus !== 'normal' && row.varianceStatus !== 'morning_open' ? `<div class="font-semibold text-amber-700">${row.varianceStatus}: ${Number(row.varianceAmount || 0).toLocaleString()}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAdminUsers() {
+            const tbody = document.getElementById('adminUsersTable');
+            if (!tbody) return;
+            const users = JSON.parse(localStorage.getItem('jombay_users_cache') || '[]');
+            tbody.innerHTML = users.map(u => `
+                <tr class="border-t text-xs">
+                    <td class="p-3 font-semibold">${u.username || ''}</td>
+                    <td class="p-3">${u.accountType || ''}</td>
+                    <td class="p-3">${u.phone || ''}</td>
+                    <td class="p-3 font-mono">${u.password || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        function showLoginForm() {
+            document.getElementById('loginCard')?.classList.remove('hidden');
+            document.getElementById('registerCard')?.classList.add('hidden');
+            document.getElementById('forgotPasswordCard')?.classList.add('hidden');
+            document.getElementById('landingInfoSection')?.classList.remove('hidden');
+        }
+
+        function showRegisterForm() {
+            document.getElementById('loginCard')?.classList.add('hidden');
+            document.getElementById('registerCard')?.classList.remove('hidden');
+            document.getElementById('forgotPasswordCard')?.classList.add('hidden');
+            document.getElementById('landingInfoSection')?.classList.add('hidden');
+        }
+
+        function showForgotPasswordForm() {
+            document.getElementById('loginCard')?.classList.add('hidden');
+            document.getElementById('registerCard')?.classList.add('hidden');
+            document.getElementById('forgotPasswordCard')?.classList.remove('hidden');
+            document.getElementById('landingInfoSection')?.classList.add('hidden');
         }
 
         function logout() {
@@ -573,405 +1024,12 @@
             location.reload();
         }
 
-        function showRegisterForm() {
-            document.getElementById('loginCard').classList.add('hidden');
-            document.getElementById('forgotPasswordCard').classList.add('hidden');
-            document.getElementById('registerCard').classList.remove('hidden');
-        }
-
-        function showLoginForm() {
-            document.getElementById('registerCard').classList.add('hidden');
-            document.getElementById('forgotPasswordCard').classList.add('hidden');
-            document.getElementById('loginCard').classList.remove('hidden');
-        }
-
-        function showForgotPasswordForm() {
-            document.getElementById('loginCard').classList.add('hidden');
-            document.getElementById('registerCard').classList.add('hidden');
-            document.getElementById('forgotPasswordCard').classList.remove('hidden');
-        }
-
-        function switchMainTab(tabName) {
-            document.getElementById('viewNew').classList.add('hidden');
-            document.getElementById('viewHistory').classList.add('hidden');
-            document.getElementById('viewAdmin').classList.add('hidden');
-
-            document.getElementById('mainTabNew').className = "px-4 py-2 text-sm font-semibold text-slate-500";
-            document.getElementById('mainTabHistory').className = "px-4 py-2 text-sm font-semibold text-slate-500";
-            document.getElementById('mainTabAdmin').className = "hidden px-4 py-2 text-sm font-semibold text-amber-600";
-            if (currentUser && (currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'admin')) {
-                document.getElementById('mainTabAdmin').classList.remove('hidden');
-            }
-
-            if (tabName === 'new') {
-                document.getElementById('viewNew').classList.remove('hidden');
-                document.getElementById('mainTabNew').className = "px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900";
-            } else if (tabName === 'history') {
-                document.getElementById('viewHistory').classList.remove('hidden');
-                document.getElementById('mainTabHistory').className = "px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900";
-                loadHistoryEntries();
-            } else if (tabName === 'admin') {
-                document.getElementById('viewAdmin').classList.remove('hidden');
-                document.getElementById('mainTabAdmin').className = "px-4 py-2 text-sm font-semibold text-amber-700 border-b-2 border-amber-600";
-                loadAdminUsersTable();
-            }
-        }
-
-        function switchSubTab(num) {
-            document.getElementById('section1').classList.add('hidden');
-            document.getElementById('section2').classList.add('hidden');
-            document.getElementById('section3').classList.add('hidden');
-
-            document.getElementById('subTab1').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
-            document.getElementById('subTab2').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
-            document.getElementById('subTab3').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
-
-            if (num === 1) {
-                document.getElementById('section1').classList.remove('hidden');
-                document.getElementById('subTab1').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
-            } else if (num === 2) {
-                document.getElementById('section2').classList.remove('hidden');
-                document.getElementById('subTab2').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
-            } else if (num === 3) {
-                document.getElementById('section3').classList.remove('hidden');
-                document.getElementById('subTab3').className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
-            }
-        }
-
-        function renderDynamicForms() {
-            const mContainer = document.getElementById('morningFloatContainer');
-            const eContainer = document.getElementById('eveningFloatContainer');
-            if (!mContainer || !eContainer) return;
-
-            mContainer.innerHTML = '';
-            eContainer.innerHTML = '';
-
-            NETWORKS_CONFIG.forEach(net => {
-                mContainer.innerHTML += `
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Float ya ${net.name} (Asubuhi)</label>
-                        <input type="number" id="morning_${net.id}" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold outline-none">
-                    </div>
-                `;
-                eContainer.innerHTML += `
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Float ya ${net.name} (Jioni)</label>
-                        <input type="number" id="night_${net.id}" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
-                    </div>
-                `;
-            });
-        }
-
-        function populateNetworkSelect() {
-            const select = document.getElementById('txNetworkSelect');
-            if (!select) return;
-            select.innerHTML = '';
-            NETWORKS_CONFIG.forEach(net => {
-                select.innerHTML += `<option value="${net.id}">${net.name}</option>`;
-            });
-            updateCommissionPreview();
-        }
-
-        function updateCommissionPreview() {
-            const netId = document.getElementById('txNetworkSelect').value;
-            const txType = document.getElementById('txTypeSelect').value;
-            const amount = parseFloat(document.getElementById('txAmountInput').value) || 0;
-            const net = NETWORKS_CONFIG.find(n => n.id === netId);
-            if (!net) return;
-            const rate = txType === 'send' ? net.sendRate : net.withdrawRate;
-            document.getElementById('txCommissionInput').value = Math.round(amount * rate);
-        }
-
-        function collectEntryPayload(mode) {
-            const date = document.getElementById('entryDate').value;
-            const dayOfWeek = document.getElementById('entryDayOfWeek').value;
-            const cashMorning = parseFloat(document.getElementById('cashMorning').value) || 0;
-            const cashNight = parseFloat(document.getElementById('cashNight').value) || 0;
-
-            const entry = {
-                username: currentUser ? currentUser.username : 'guest',
-                date,
-                dayOfWeek,
-                cashMorning,
-                cashNight
-            };
-
-            NETWORKS_CONFIG.forEach(net => {
-                entry[`morning_${net.id}`] = parseFloat(document.getElementById(`morning_${net.id}`).value) || 0;
-                entry[`night_${net.id}`] = parseFloat(document.getElementById(`night_${net.id}`).value) || 0;
-            });
-
-            return entry;
-        }
-
-        async function saveMorningEntry() {
-            if (!currentUser) return alert("Tafadhali ingia kwanza.");
-            const entry = collectEntryPayload('morning');
-            setLoading('saveMorningBtn', true, "Inahifadhi mtaji...");
-            try {
-                const res = await apiPost({ action: "save_entry", entry });
-                if (res.status === "success") {
-                    cachedEntries.push(entry);
-                    localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
-                    alert(res.message || "Mtaji wa asubuhi umehifadhiwa kwenye Google Sheet!");
-                } else {
-                    alert(res.message || "Imeshindikana kuhifadhi.");
-                }
-            } catch (err) {
-                alert("Hitilafu ya mtandao: " + err.message);
-            } finally {
-                setLoading('saveMorningBtn', false);
-            }
-        }
-
-        async function saveEveningEntry() {
-            if (!currentUser) return alert("Tafadhali ingia kwanza.");
-            const entry = collectEntryPayload('evening');
-            setLoading('saveEveningBtn', true, "Inahifadhi funga siku...");
-            try {
-                const res = await apiPost({ action: "save_entry", entry });
-                if (res.status === "success") {
-                    cachedEntries.push(entry);
-                    localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
-                    alert(res.message || "Funga siku imehifadhiwa kwenye Google Sheet!");
-                } else {
-                    alert(res.message || "Imeshindikana kuhifadhi.");
-                }
-            } catch (err) {
-                alert("Hitilafu ya mtandao: " + err.message);
-            } finally {
-                setLoading('saveEveningBtn', false);
-            }
-        }
-
-        async function addTransactionItem() {
-            if (!currentUser) return alert("Tafadhali ingia kwanza.");
-            const netId = document.getElementById('txNetworkSelect').value;
-            const txType = document.getElementById('txTypeSelect').value;
-            const amount = parseFloat(document.getElementById('txAmountInput').value) || 0;
-            const commission = parseFloat(document.getElementById('txCommissionInput').value) || 0;
-            const date = document.getElementById('entryDate').value;
-
-            if (amount <= 0) {
-                alert('Weka kiasi halisi cha pesa.');
-                return;
-            }
-
-            const net = NETWORKS_CONFIG.find(n => n.id === netId);
-            const txObj = {
-                username: currentUser.username,
-                date: date,
-                netName: net ? net.name : netId,
-                type: txType,
-                amount: amount,
-                commission: commission
-            };
-
-            setLoading('addTxBtn', true, "Inahifadhi muamala...");
-            try {
-                const res = await apiPost({ action: "add_transaction", tx: txObj });
-                if (res.status === "success") {
-                    activeTransactionsToday.unshift(txObj);
-                    cachedTransactions.push(txObj);
-                    localStorage.setItem('jombay_tx_cache', JSON.stringify(cachedTransactions));
-                    renderTransactionsList();
-                    document.getElementById('txAmountInput').value = '';
-                    document.getElementById('txCommissionInput').value = '';
-                } else {
-                    alert(res.message || "Imeshindikana kuhifadhi muamala.");
-                }
-            } catch (err) {
-                alert("Hitilafu ya mtandao: " + err.message);
-            } finally {
-                setLoading('addTxBtn', false);
-            }
-        }
-
-        function renderTransactionsList() {
-            const container = document.getElementById('transactionsListContainer');
-            if (!container) return;
-
-            if (!activeTransactionsToday.length) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Hakuna muamala mpya uliowekwa kwenye session hii.</p>`;
-                return;
-            }
-
-            container.innerHTML = activeTransactionsToday.map((tx, idx) => {
-                const typeLabel = tx.type === 'send' ? 'Kutuma (Send)' : 'Kutoa (Withdraw)';
-                const badgeClass = tx.type === 'send' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800';
-                return `
-                    <div class="py-2.5 flex justify-between items-center text-xs">
-                        <div>
-                            <span class="font-bold text-slate-800">${tx.netName}</span>
-                            <span class="ml-2 px-2 py-0.5 rounded font-semibold ${badgeClass}">${typeLabel}</span>
-                            <span class="block text-slate-400 text-[11px] mt-0.5">${tx.date || ''} • #${activeTransactionsToday.length - idx}</span>
-                        </div>
-                        <div class="text-right">
-                            <div class="font-bold text-slate-900">TSH ${Number(tx.amount).toLocaleString()}</div>
-                            <div class="text-green-700 font-semibold">Kamisheni: +${Number(tx.commission).toLocaleString()}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        async function loadHistoryEntries() {
-            const container = document.getElementById('historyContainer');
-            if (!container || !currentUser) return;
-
-            container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Inapakua kumbukumbu kutoka Google Sheet...</p>`;
-            try {
-                const [entriesRes, txRes] = await Promise.all([
-                    apiGet("entries", currentUser.username),
-                    apiGet("transactions", currentUser.username)
-                ]);
-                cachedEntries = Array.isArray(entriesRes.data) ? entriesRes.data : [];
-                cachedTransactions = Array.isArray(txRes.data) ? txRes.data : [];
-                localStorage.setItem('jombay_entries_cache', JSON.stringify(cachedEntries));
-                localStorage.setItem('jombay_tx_cache', JSON.stringify(cachedTransactions));
-            } catch (err) {
-                cachedEntries = JSON.parse(localStorage.getItem('jombay_entries_cache') || '[]');
-                cachedTransactions = JSON.parse(localStorage.getItem('jombay_tx_cache') || '[]');
-            }
-
-            if (!cachedEntries.length) {
-                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4 bg-white rounded-xl border">Bado hakuna kumbukumbu zilizohifadhiwa kwenye Google Sheet.</p>`;
-                return;
-            }
-
-            const reversed = [...cachedEntries].reverse();
-            container.innerHTML = reversed.map((item, idx) => {
-                const realIndex = cachedEntries.length - 1 - idx;
-                const morningTotal = sumMorning(item);
-                const nightTotal = sumNight(item);
-                const diff = nightTotal - morningTotal;
-                const diffColor = diff >= 0 ? 'text-green-700' : 'text-red-600';
-
-                return `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-                        <div class="space-y-1">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-blue-900 text-sm">${formatDateDisplay(item.date)}</span>
-                                <span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-semibold">${item.dayOfWeek || ''}</span>
-                                <span class="text-xs text-slate-400">(${item.username || ''})</span>
-                            </div>
-                            <div class="text-xs text-slate-600 flex flex-wrap gap-3">
-                                <span>Mtaji Asubuhi: <b>TSH ${morningTotal.toLocaleString()}</b></span>
-                                <span>Salio Jioni: <b>TSH ${nightTotal.toLocaleString()}</b></span>
-                                <span class="${diffColor}">Tofauti: <b>${diff >= 0 ? '+' : ''}${diff.toLocaleString()}</b></span>
-                            </div>
-                        </div>
-                        <button onclick="openEntryDetail(${realIndex})" class="bg-blue-900 hover:bg-blue-800 text-white px-3 py-2 rounded-lg text-xs font-bold self-start md:self-auto">
-                            Angalia Statement
-                        </button>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function formatDateDisplay(d) {
-            if (!d) return '-';
-            const str = String(d);
-            return str.includes('T') ? str.split('T')[0] : str;
-        }
-
-        function sumMorning(item) {
-            let total = parseFloat(item.cashMorning) || 0;
-            NETWORKS_CONFIG.forEach(net => {
-                total += parseFloat(item[`morning_${net.id}`]) || 0;
-            });
-            return total;
-        }
-
-        function sumNight(item) {
-            let total = parseFloat(item.cashNight) || 0;
-            NETWORKS_CONFIG.forEach(net => {
-                total += parseFloat(item[`night_${net.id}`]) || 0;
-            });
-            return total;
-        }
-
-        function openEntryDetail(index) {
-            const item = cachedEntries[index];
-            if (!item) return;
-
-            const dateStr = formatDateDisplay(item.date);
-            const dayTx = cachedTransactions.filter(t => formatDateDisplay(t.date) === dateStr && String(t.username || '').toLowerCase() === String(item.username || '').toLowerCase());
-            const totalComm = dayTx.reduce((sum, t) => sum + (parseFloat(t.commission) || 0), 0);
-
-            document.getElementById('modalTitle').innerText = `Statement - ${dateStr} (${item.dayOfWeek || ''})`;
-
-            let rowsHtml = NETWORKS_CONFIG.map(net => {
-                const mVal = parseFloat(item[`morning_${net.id}`]) || 0;
-                const nVal = parseFloat(item[`night_${net.id}`]) || 0;
-                const dVal = nVal - mVal;
-                return `
-                    <tr class="border-b">
-                        <td class="py-1.5 font-semibold">${net.name}</td>
-                        <td class="py-1.5 text-right">${mVal.toLocaleString()}</td>
-                        <td class="py-1.5 text-right">${nVal.toLocaleString()}</td>
-                        <td class="py-1.5 text-right font-bold ${dVal >= 0 ? 'text-green-700' : 'text-red-600'}">${dVal >= 0 ? '+' : ''}${dVal.toLocaleString()}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            const txHtml = dayTx.length ? dayTx.map(t => `
-                <tr class="border-b">
-                    <td class="py-1.5 font-semibold">${t.netName}</td>
-                    <td class="py-1.5">${t.type === 'send' ? 'Kutuma' : 'Kutoa'}</td>
-                    <td class="py-1.5 text-right">${(parseFloat(t.amount) || 0).toLocaleString()}</td>
-                    <td class="py-1.5 text-right text-green-700 font-bold">+${(parseFloat(t.commission) || 0).toLocaleString()}</td>
-                </tr>
-            `).join('') : `<tr><td colspan="4" class="py-2 text-center text-slate-400">Hakuna miamala ya siku hii.</td></tr>`;
-
-            document.getElementById('modalBody').innerHTML = `
-                <div class="border-b pb-2 flex justify-between">
-                    <div>
-                        <p class="font-bold text-base text-blue-900">JOMBAY ENTERPRISES</p>
-                        <p class="text-slate-500">Wakala: <b>${item.username}</b> | Tarehe: <b>${dateStr}</b> (${item.dayOfWeek || ''})</p>
-                    </div>
-                    <div class="text-right">
-                        <p>Cash Asubuhi: <b>${(parseFloat(item.cashMorning) || 0).toLocaleString()}</b></p>
-                        <p>Cash Jioni: <b>${(parseFloat(item.cashNight) || 0).toLocaleString()}</b></p>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 class="font-bold text-slate-800 mb-1">Muhtasari wa Float (Asubuhi vs Jioni)</h4>
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="bg-slate-100 border-b">
-                                <th class="py-1.5">Mtandao</th>
-                                <th class="py-1.5 text-right">Asubuhi</th>
-                                <th class="py-1.5 text-right">Jioni</th>
-                                <th class="py-1.5 text-right">Tofauti</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rowsHtml}</tbody>
-                    </table>
-                </div>
-
-                <div>
-                    <h4 class="font-bold text-slate-800 mb-1">Miamala ya Siku (Jumla Kamisheni: TSH ${totalComm.toLocaleString()})</h4>
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="bg-slate-100 border-b">
-                                <th class="py-1.5">Mtandao</th>
-                                <th class="py-1.5">Aina</th>
-                                <th class="py-1.5 text-right">Kiasi</th>
-                                <th class="py-1.5 text-right">Kamisheni</th>
-                            </tr>
-                        </thead>
-                        <tbody>${txHtml}</tbody>
-                    </table>
-                </div>
-            `;
-
-            document.getElementById('detailModal').classList.remove('hidden');
+        function goBackHome() {
+            switchMainTab('new');
         }
 
         function closeModal() {
-            document.getElementById('detailModal').classList.add('hidden');
+            document.getElementById('detailModal')?.classList.add('hidden');
         }
     </script>
 </body>
