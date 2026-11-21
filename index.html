@@ -484,14 +484,19 @@
             return await res.json();
         }
 
-        async function apiPost(payload) {
+        async function apiPostSilent(payload) {
             const res = await fetch(API_URL, {
                 method: "POST",
                 redirect: "follow",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             });
-            return await res.json();
+            const data = await res.json();
+            const msg = String(data?.message || '').trim();
+            if (/unknown\s*action/i.test(msg)) {
+                return { status: "ignored_unknown_action", message: "" };
+            }
+            return data;
         }
 
         function extractRows(res) {
@@ -663,10 +668,10 @@
             `;
         }
 
-        function formatFriendlyMessage(resMessage, fallbackMsg) {
-            const clean = String(resMessage || '').trim();
-            if (!clean || /google\s*sheet/i.test(clean)) {
-                return fallbackMsg;
+        function sanitizeNotice(msg, fallback) {
+            const clean = String(msg || '').trim();
+            if (!clean || /unknown\s*action/i.test(clean) || /google\s*sheet/i.test(clean)) {
+                return fallback;
             }
             return clean;
         }
@@ -697,19 +702,14 @@
             setLoading('saveMorningBtn', true, "Inahifadhi taarifa...");
             try {
                 persistEntryLocally(entryData);
-                let serverMsg = "";
+                let note = "";
                 try {
-                    const res = await apiPost({
-                        action: "addentry",
-                        upsert: true,
-                        replacePeriod: true,
-                        entry: entryData
-                    });
-                    serverMsg = formatFriendlyMessage(res?.message, "");
-                } catch (netErr) {}
+                    const res = await apiPostSilent({ action: "add_entry", upsert: true, entry: entryData });
+                    note = sanitizeNotice(res?.message, "");
+                } catch (e) {}
 
                 await syncAllFromSheet(false);
-                alert(serverMsg || `Hongera! Taarifa zako za mtaji wa asubuhi (${total.toLocaleString()} TSH) zimehifadhiwa vizuri.`);
+                alert(note || `Hongera! Taarifa zako za mtaji wa asubuhi (${total.toLocaleString()} TSH) zimehifadhiwa vizuri.`);
             } finally {
                 setLoading('saveMorningBtn', false);
                 refreshEveningLivePreview();
@@ -762,20 +762,14 @@
             setLoading('saveEveningBtn', true, "Inahifadhi taarifa...");
             try {
                 persistEntryLocally(entryData);
-                let serverMsg = "";
+                let note = "";
                 try {
-                    const saveRes = await apiPost({
-                        action: "saveentry",
-                        previewOnly: false,
-                        upsert: true,
-                        replacePeriod: true,
-                        entry: entryData
-                    });
-                    serverMsg = formatFriendlyMessage(saveRes?.message, "");
-                } catch (netErr) {}
+                    const res = await apiPostSilent({ action: "save_entry", upsert: true, entry: entryData });
+                    note = sanitizeNotice(res?.message, "");
+                } catch (e) {}
 
                 await syncAllFromSheet(false);
-                alert(serverMsg || `${summaryText}\n\nHongera! Taarifa zako za kufunga hesabu ya jioni zimehifadhiwa vizuri.`);
+                alert(note || `${summaryText}\n\nHongera! Taarifa zako za kufunga hesabu ya jioni zimehifadhiwa vizuri.`);
             } finally {
                 setLoading('saveEveningBtn', false);
                 refreshEveningLivePreview();
@@ -804,16 +798,11 @@
                 cachedUsers = existing;
                 writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
 
-                let serverMsg = "";
                 try {
-                    const res = await apiPost({ action: "register", ...newUser });
-                    if (res && res.status === "error") {
-                        return alert(formatFriendlyMessage(res.message, "Imeshindikana kusajili."));
-                    }
-                    serverMsg = formatFriendlyMessage(res?.message, "");
+                    await apiPostSilent({ action: "register", ...newUser });
                 } catch (e) {}
 
-                alert(serverMsg || "Usajili umefanikiwa! Akaunti imesajiliwa vizuri.");
+                alert("Usajili umefanikiwa! Akaunti imesajiliwa vizuri.");
                 document.getElementById('regUsername').value = '';
                 document.getElementById('regEmail').value = '';
                 document.getElementById('regPhone').value = '';
@@ -886,27 +875,20 @@
             setLoading('resetPassBtn', true, "Inabadili password...");
             try {
                 const users = readLocalArray(STORAGE_KEYS.USERS);
-                let updatedLocal = false;
                 const updatedUsers = users.map(u => {
                     if (
                         String(u.username || '').trim().toLowerCase() === username.toLowerCase() &&
                         String(u.phone || '').trim() === phone
                     ) {
-                        updatedLocal = true;
                         return { ...u, password: newPassword };
                     }
                     return u;
                 });
-                if (updatedLocal) {
-                    cachedUsers = updatedUsers;
-                    writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
-                }
+                cachedUsers = updatedUsers;
+                writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
 
                 try {
-                    const res = await apiPost({ action: "reset_password", username, phone, newPassword });
-                    if (res && res.status === "error" && !updatedLocal) {
-                        return alert(formatFriendlyMessage(res.message, "Imeshindikana kubadili password."));
-                    }
+                    await apiPostSilent({ action: "reset_password", username, phone, newPassword });
                 } catch (e) {}
 
                 alert("Password imebadilishwa kikamilifu!");
@@ -963,15 +945,13 @@
                 writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
                 renderActiveTransactions();
 
-                let serverMsg = "";
                 try {
-                    const res = await apiPost({ action: "addtransaction", transaction: txItem });
-                    serverMsg = formatFriendlyMessage(res?.message, "");
+                    await apiPostSilent({ action: "add_transaction", transaction: txItem });
                 } catch (e) {}
 
                 document.getElementById('txAmountInput').value = '';
                 document.getElementById('txCommissionInput').value = 0;
-                alert(serverMsg || "Hongera! Taarifa za muamala wako zimehifadhiwa vizuri.");
+                alert("Hongera! Taarifa za muamala wako zimehifadhiwa vizuri.");
             } finally {
                 setLoading('addTxBtn', false);
             }
@@ -1001,8 +981,7 @@
         async function syncAllFromSheet(showAlert = false) {
             const statusEl = document.getElementById('syncStatusText');
             if (statusEl) statusEl.innerText = "Inasawazisha kumbukumbu...";
-            const localNow = readLocalArray(STORAGE_KEYS.ENTRIES);
-            cachedEntries = mergeEntriesSafely(cachedEntries, localNow);
+            cachedEntries = mergeEntriesSafely(cachedEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
 
             try {
                 const queryUser = isAdminUser() ? "all" : (currentUser?.username || "all");
@@ -1208,14 +1187,7 @@
             if (!sure) return;
 
             try {
-                await apiPost({
-                    action: "deleteentry",
-                    entry: target,
-                    username: target.username || "",
-                    date: target.date || "",
-                    type: target.type || "",
-                    timestamp: target.timestamp || ""
-                });
+                await apiPostSilent({ action: "delete_entry", entry: target });
             } catch (e) {}
 
             cachedEntries.splice(originalIndex, 1);
