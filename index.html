@@ -195,9 +195,16 @@
                     <div id="section1" class="space-y-6">
                         <div class="bg-white rounded-xl shadow-sm border p-4">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Cash Taslimu (Asubuhi)</label>
-                            <input type="number" id="cashMorning" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold outline-none">
+                            <input type="number" id="cashMorning" oninput="refreshMorningTotalPreview()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold outline-none">
                         </div>
                         <div id="morningFloatContainer" class="space-y-4"></div>
+                        <div class="bg-blue-900 text-white rounded-xl p-4 flex justify-between items-center shadow-sm">
+                            <div>
+                                <div class="text-xs text-blue-200">Jumla Kuu ya Mtaji wa Asubuhi (Cash + Mitandao)</div>
+                                <div class="text-[11px] text-yellow-300">Inajumuisha mitandao yote iliyoingizwa asubuhi</div>
+                            </div>
+                            <div id="morningTotalDisplay" class="text-lg font-bold text-yellow-300">0 TSH</div>
+                        </div>
                         <button type="button" id="saveMorningBtn" onclick="saveMorningEntry()" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3.5 rounded-lg">Hifadhi Mtaji wa Asubuhi</button>
                     </div>
 
@@ -207,9 +214,16 @@
                             <div class="bg-indigo-900 text-white p-3 rounded-lg font-bold text-sm">Funga Hesabu za Jioni (Cash & Float Zilizobaki)</div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 mb-1">Cash ya Usiku Mkononi (TSH)</label>
-                                <input type="number" id="cashNight" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
+                                <input type="number" id="cashNight" oninput="refreshEveningLivePreview()" placeholder="0" class="w-full border rounded-lg p-2.5 text-sm font-bold">
                             </div>
                             <div id="eveningFloatContainer" class="space-y-4 pt-2"></div>
+                            <div class="bg-indigo-950 text-white rounded-xl p-4 flex justify-between items-center">
+                                <div>
+                                    <div class="text-xs text-indigo-200">Jumla Kuu ya Hesabu ya Jioni (Cash + Mitandao)</div>
+                                    <div class="text-[11px] text-yellow-300">Inalinganishwa moja kwa moja na Total ya Asubuhi</div>
+                                </div>
+                                <div id="eveningTotalDisplay" class="text-lg font-bold text-yellow-300">0 TSH</div>
+                            </div>
                             <div id="eveningVarianceBox" class="hidden p-3.5 rounded-xl border text-xs font-semibold space-y-1"></div>
                         </div>
                         <button type="button" id="saveEveningBtn" onclick="saveEveningEntry()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-blue-950 font-bold py-3.5 rounded-lg text-base">Kamilisha na Hifadhi Funga Siku</button>
@@ -260,7 +274,7 @@
                                 <button type="button" onclick="switchMainTab('new')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-semibold">← Rudi Shughuli za Siku</button>
                             </div>
                         </div>
-                        <p id="historyFilterHint" class="text-xs text-slate-500">Inaonyesha kumbukumbu zako za asubuhi na jioni zilizohifadhiwa.</p>
+                        <p id="historyFilterHint" class="text-xs text-slate-500">Bonyeza kumbukumbu yoyote kuona Statement kamili ya kila mtandao na Total ya Asubuhi na Jioni.</p>
                     </div>
                     <div id="historyContainer" class="space-y-3">
                         <p class="text-xs text-slate-500 text-center py-4">Bado hakuna kumbukumbu zilizohifadhiwa.</p>
@@ -311,11 +325,11 @@
         </main>
     </div>
 
-    <!-- MODAL YA TAARIFA YA KINA -->
+    <!-- MODAL YA STATEMENT YA KINA -->
     <div id="detailModal" class="fixed inset-0 bg-slate-900/60 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3 no-print">
-                <h3 class="font-bold text-lg" id="modalTitle">Taarifa ya Kina</h3>
+                <h3 class="font-bold text-lg" id="modalTitle">Statement ya Siku</h3>
                 <div class="flex gap-2">
                     <button type="button" onclick="window.print()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold">Chapisha Statement (Print)</button>
                     <button type="button" onclick="closeModal()" class="text-slate-500 font-bold px-2">Funga X</button>
@@ -330,10 +344,10 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbwZYkH1CRdDkGsPREITZlFUDL5hOwpzJE3unreeSIhMjWPE4liPz35NMmzDy6Wx6Fc/exec";
         const STORAGE_KEYS = {
-            ENTRIES: "jombay_saved_entries_v2",
-            TX: "jombay_saved_tx_v2",
-            USERS: "jombay_saved_users_v2",
-            SESSION: "jombay_saved_session_v2"
+            ENTRIES: "jombay_saved_entries_v3",
+            TX: "jombay_saved_tx_v3",
+            USERS: "jombay_saved_users_v3",
+            SESSION: "jombay_saved_session_v3"
         };
 
         const NETWORKS_CONFIG = [
@@ -390,9 +404,17 @@
                 if (!existing) {
                     map.set(key, { ...item });
                 } else {
+                    const merged = { ...existing, ...item };
+                    if (!merged.networks && existing.networks) merged.networks = existing.networks;
                     const rTot = Number(item.total ?? item.amount ?? 0) || 0;
                     const lTot = Number(existing.total ?? existing.amount ?? 0) || 0;
-                    map.set(key, rTot > 0 || lTot === 0 ? { ...existing, ...item } : { ...item, ...existing });
+                    if (rTot === 0 && lTot > 0) {
+                        merged.total = lTot;
+                        merged.amount = lTot;
+                        merged.cash = existing.cash ?? merged.cash;
+                        merged.float = existing.float ?? merged.float;
+                    }
+                    map.set(key, merged);
                 }
             });
             return Array.from(map.values());
@@ -446,17 +468,9 @@
             }
         }
 
-        function showLoginForm() {
-            setScreenVisibility('login');
-        }
-
-        function showRegisterForm() {
-            setScreenVisibility('register');
-        }
-
-        function showForgotPasswordForm() {
-            setScreenVisibility('forgot');
-        }
+        function showLoginForm() { setScreenVisibility('login'); }
+        function showRegisterForm() { setScreenVisibility('register'); }
+        function showForgotPasswordForm() { setScreenVisibility('forgot'); }
 
         function getTodayDateStr() {
             const now = new Date();
@@ -473,9 +487,8 @@
             if (!isNaN(d.getTime())) {
                 dayEl.value = days[d.getDay()];
             }
-            if (currentUser) {
-                refreshEveningLivePreview();
-            }
+            refreshMorningTotalPreview();
+            if (currentUser) refreshEveningLivePreview();
         }
 
         async function apiGet(action, username = "") {
@@ -531,7 +544,7 @@
                 morningEl.innerHTML = NETWORKS_CONFIG.map(net => `
                     <div class="bg-white rounded-xl shadow-sm border p-3 flex justify-between items-center gap-3">
                         <label class="text-xs font-bold text-slate-700">${net.name} (Float Asubuhi)</label>
-                        <input type="number" data-net="${net.id}" class="morning-float-input w-40 border rounded-lg p-2 text-sm font-bold text-right" placeholder="0">
+                        <input type="number" data-net="${net.id}" oninput="refreshMorningTotalPreview()" class="morning-float-input w-40 border rounded-lg p-2 text-sm font-bold text-right" placeholder="0">
                     </div>
                 `).join('');
             }
@@ -544,6 +557,65 @@
                 `).join('');
             }
             document.getElementById('cashNight')?.addEventListener('input', refreshEveningLivePreview);
+            refreshMorningTotalPreview();
+        }
+
+        function collectNetworkValues(selector) {
+            const map = {};
+            NETWORKS_CONFIG.forEach(net => { map[net.id] = 0; });
+            document.querySelectorAll(selector).forEach(el => {
+                const id = el.getAttribute('data-net');
+                if (id) map[id] = Number(el.value) || 0;
+            });
+            return map;
+        }
+
+        function parseNetworkBreakdownFromRow(row) {
+            const result = {};
+            NETWORKS_CONFIG.forEach(net => { result[net.id] = 0; });
+            if (!row) return result;
+
+            if (row.networks && typeof row.networks === 'object') {
+                NETWORKS_CONFIG.forEach(net => {
+                    if (row.networks[net.id] !== undefined) result[net.id] = Number(row.networks[net.id]) || 0;
+                });
+                return result;
+            }
+
+            if (typeof row.networksJson === 'string' && row.networksJson.trim()) {
+                try {
+                    const parsed = JSON.parse(row.networksJson);
+                    NETWORKS_CONFIG.forEach(net => {
+                        if (parsed[net.id] !== undefined) result[net.id] = Number(parsed[net.id]) || 0;
+                    });
+                    return result;
+                } catch (e) {}
+            }
+
+            const notesStr = String(row.notes || '');
+            NETWORKS_CONFIG.forEach(net => {
+                const escaped = net.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escaped + '\\s*:\\s*([0-9,]+)', 'i');
+                const match = notesStr.match(regex);
+                if (match && match[1]) {
+                    result[net.id] = Number(match[1].replace(/,/g, '')) || 0;
+                }
+            });
+            return result;
+        }
+
+        function formatNetworksSummary(netMap) {
+            return NETWORKS_CONFIG
+                .map(net => `${net.name}: ${(Number(netMap[net.id]) || 0).toLocaleString()}`)
+                .join(' | ');
+        }
+
+        function refreshMorningTotalPreview() {
+            const cashM = Number(document.getElementById('cashMorning')?.value) || 0;
+            const floatM = sumInputs('.morning-float-input');
+            const totalM = cashM + floatM;
+            const el = document.getElementById('morningTotalDisplay');
+            if (el) el.innerText = `${totalM.toLocaleString()} TSH`;
         }
 
         function populateNetworkSelect() {
@@ -572,7 +644,7 @@
             return Array.from(document.querySelectorAll(selector)).reduce((acc, el) => acc + (Number(el.value) || 0), 0);
         }
 
-        function findMorningEntryForDate(username, dateStr) {
+        function findEntryForDateAndPeriod(username, dateStr, periodKind) {
             const uLower = String(username || '').trim().toLowerCase();
             const targetDate = String(dateStr || '').trim();
             const matches = (cachedEntries || []).filter(r => {
@@ -580,9 +652,19 @@
                 const rType = String(r.type || r.session || r.period || '').trim().toLowerCase();
                 const rDate = String(r.date || r.timestamp || '').slice(0, 10);
                 const isMorning = rType.includes('asubuhi') || rType.includes('morning') || rType.includes('mtaji');
-                return rUser === uLower && isMorning && rDate === targetDate;
+                const isEvening = rType.includes('jioni') || rType.includes('evening') || rType.includes('funga');
+                const matchPeriod = periodKind === 'morning' ? isMorning : isEvening;
+                return rUser === uLower && matchPeriod && rDate === targetDate;
             });
             return matches.length ? matches[matches.length - 1] : null;
+        }
+
+        function findMorningEntryForDate(username, dateStr) {
+            return findEntryForDateAndPeriod(username, dateStr, 'morning');
+        }
+
+        function findEveningEntryForDate(username, dateStr) {
+            return findEntryForDateAndPeriod(username, dateStr, 'evening');
         }
 
         function computeVarianceDetails(morningAmount, eveningAmount, dateStr) {
@@ -599,8 +681,8 @@
                     amountText: `${shortage.toLocaleString()} TSH`,
                     message:
                         `TAARIFA YA HESABU (${dateStr}):\n` +
-                        `• Hesabu ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
-                        `• Hesabu ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
+                        `• Total ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
+                        `• Total ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
                         `• Kuna PUNGUFU la: ${shortage.toLocaleString()} TSH`
                 };
             }
@@ -613,8 +695,8 @@
                     amountText: `${diff.toLocaleString()} TSH`,
                     message:
                         `TAARIFA YA HESABU (${dateStr}):\n` +
-                        `• Hesabu ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
-                        `• Hesabu ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
+                        `• Total ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
+                        `• Total ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
                         `• Kuna ONGEZEKO la: ${diff.toLocaleString()} TSH`
                 };
             }
@@ -626,15 +708,16 @@
                 amountText: '0 TSH',
                 message:
                     `TAARIFA YA HESABU (${dateStr}):\n` +
-                    `• Hesabu ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
-                    `• Hesabu ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
+                    `• Total ya Asubuhi: ${mAmt.toLocaleString()} TSH\n` +
+                    `• Total ya Jioni: ${eAmt.toLocaleString()} TSH\n` +
                     `• Hesabu IMELINGANA (hakuna pungufu wala ongezeko).`
             };
         }
 
         function refreshEveningLivePreview() {
             const box = document.getElementById('eveningVarianceBox');
-            if (!box || !currentUser) return;
+            const totalDisp = document.getElementById('eveningTotalDisplay');
+            if (!currentUser) return;
 
             const dateStr = document.getElementById('entryDate')?.value || getTodayDateStr();
             const morningRow = findMorningEntryForDate(currentUser.username, dateStr);
@@ -642,12 +725,15 @@
             const floatNight = sumInputs('.evening-float-input');
             const eveningTotal = cashNight + floatNight;
 
+            if (totalDisp) totalDisp.innerText = `${eveningTotal.toLocaleString()} TSH`;
+            if (!box) return;
+
             if (!morningRow) {
                 box.className = "p-3.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-semibold space-y-1";
                 box.classList.remove('hidden');
                 box.innerHTML = `
                     <div>⚠️ Hakuna rekodi ya hesabu ya <b>Asubuhi</b> kwa tarehe <b>${dateStr}</b>.</div>
-                    <div>Hesabu ya Jioni ya sasa: <b>${eveningTotal.toLocaleString()} TSH</b></div>
+                    <div>Total ya Jioni ya sasa: <b>${eveningTotal.toLocaleString()} TSH</b></div>
                 `;
                 return;
             }
@@ -662,8 +748,8 @@
             box.className = `p-3.5 rounded-xl border ${styleClass} text-xs font-semibold space-y-1`;
             box.classList.remove('hidden');
             box.innerHTML = `
-                <div>Hesabu ya Asubuhi (${dateStr}): <b>${morningTotal.toLocaleString()} TSH</b></div>
-                <div>Hesabu ya Jioni: <b>${eveningTotal.toLocaleString()} TSH</b></div>
+                <div>Total ya Asubuhi (${dateStr}): <b>${morningTotal.toLocaleString()} TSH</b></div>
+                <div>Total ya Jioni: <b>${eveningTotal.toLocaleString()} TSH</b></div>
                 <div>Hali ya Hesabu: <b>${v.label} — ${v.amountText}</b></div>
             `;
         }
@@ -679,7 +765,8 @@
         async function saveMorningEntry() {
             if (!currentUser) return alert("Tafadhali ingia kwanza.");
             const cash = Number(document.getElementById('cashMorning')?.value) || 0;
-            const floatTotal = sumInputs('.morning-float-input');
+            const networks = collectNetworkValues('.morning-float-input');
+            const floatTotal = Object.values(networks).reduce((a, b) => a + (Number(b) || 0), 0);
             const total = cash + floatTotal;
             const date = document.getElementById('entryDate')?.value || getTodayDateStr();
             const day = document.getElementById('entryDayOfWeek')?.value || "";
@@ -696,7 +783,9 @@
                 commission: 0,
                 varianceStatus: "morning_open",
                 varianceAmount: 0,
-                notes: `Cash Asubuhi: ${cash.toLocaleString()}, Float Asubuhi: ${floatTotal.toLocaleString()}`
+                networks,
+                networksJson: JSON.stringify(networks),
+                notes: `Cash: ${cash.toLocaleString()} | ${formatNetworksSummary(networks)}`
             };
 
             setLoading('saveMorningBtn', true, "Inahifadhi taarifa...");
@@ -709,7 +798,7 @@
                 } catch (e) {}
 
                 await syncAllFromSheet(false);
-                alert(note || `Hongera! Taarifa zako za mtaji wa asubuhi (${total.toLocaleString()} TSH) zimehifadhiwa vizuri.`);
+                alert(note || `Hongera! Mtaji wa asubuhi (Total: ${total.toLocaleString()} TSH) na salio la kila mtandao vimehifadhiwa vizuri.`);
             } finally {
                 setLoading('saveMorningBtn', false);
                 refreshEveningLivePreview();
@@ -719,7 +808,8 @@
         async function saveEveningEntry() {
             if (!currentUser) return alert("Tafadhali ingia kwanza.");
             const cash = Number(document.getElementById('cashNight')?.value) || 0;
-            const floatTotal = sumInputs('.evening-float-input');
+            const networks = collectNetworkValues('.evening-float-input');
+            const floatTotal = Object.values(networks).reduce((a, b) => a + (Number(b) || 0), 0);
             const eveningTotal = cash + floatTotal;
             const date = document.getElementById('entryDate')?.value || getTodayDateStr();
             const day = document.getElementById('entryDayOfWeek')?.value || "";
@@ -730,7 +820,7 @@
             let varianceAmount = 0;
 
             if (!morningRow) {
-                summaryText = `Hakuna hesabu ya ASUBUHI iliyopatikana kwa tarehe ${date}.\nHesabu ya JIONI: ${eveningTotal.toLocaleString()} TSH`;
+                summaryText = `Hakuna hesabu ya ASUBUHI iliyopatikana kwa tarehe ${date}.\nTotal ya JIONI: ${eveningTotal.toLocaleString()} TSH`;
             } else {
                 const morningTotal = Number(morningRow.total ?? morningRow.amount ?? 0) || 0;
                 const v = computeVarianceDetails(morningTotal, eveningTotal, date);
@@ -756,7 +846,9 @@
                 commission: 0,
                 varianceStatus,
                 varianceAmount,
-                notes: `Cash Jioni: ${cash.toLocaleString()}, Float Jioni: ${floatTotal.toLocaleString()} | ${summaryText.replace(/\n/g, ' | ')}`
+                networks,
+                networksJson: JSON.stringify(networks),
+                notes: `Cash: ${cash.toLocaleString()} | ${formatNetworksSummary(networks)}`
             };
 
             setLoading('saveEveningBtn', true, "Inahifadhi taarifa...");
@@ -769,7 +861,7 @@
                 } catch (e) {}
 
                 await syncAllFromSheet(false);
-                alert(note || `${summaryText}\n\nHongera! Taarifa zako za kufunga hesabu ya jioni zimehifadhiwa vizuri.`);
+                alert(note || `${summaryText}\n\nHongera! Hesabu ya jioni (Total: ${eveningTotal.toLocaleString()} TSH) na salio la kila mtandao vimehifadhiwa vizuri.`);
             } finally {
                 setLoading('saveEveningBtn', false);
                 refreshEveningLivePreview();
@@ -865,412 +957,4 @@
         async function handleResetPassword() {
             const username = document.getElementById('forgotUsername').value.trim();
             const phone = document.getElementById('forgotPhone').value.trim();
-            const newPassword = document.getElementById('forgotNewPassword').value.trim();
-
-            if (!username || !phone || !newPassword) {
-                alert("Tafadhali jaza Username, Namba ya Simu, na Password Mpya!");
-                return;
-            }
-
-            setLoading('resetPassBtn', true, "Inabadili password...");
-            try {
-                const users = readLocalArray(STORAGE_KEYS.USERS);
-                const updatedUsers = users.map(u => {
-                    if (
-                        String(u.username || '').trim().toLowerCase() === username.toLowerCase() &&
-                        String(u.phone || '').trim() === phone
-                    ) {
-                        return { ...u, password: newPassword };
-                    }
-                    return u;
-                });
-                cachedUsers = updatedUsers;
-                writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
-
-                try {
-                    await apiPostSilent({ action: "reset_password", username, phone, newPassword });
-                } catch (e) {}
-
-                alert("Password imebadilishwa kikamilifu!");
-                document.getElementById('forgotUsername').value = '';
-                document.getElementById('forgotPhone').value = '';
-                document.getElementById('forgotNewPassword').value = '';
-                showLoginForm();
-            } finally {
-                setLoading('resetPassBtn', false);
-            }
-        }
-
-        function isAdminUser() {
-            if (!currentUser) return false;
-            return currentUser.role === 'admin' || String(currentUser.username || '').trim().toLowerCase() === 'admin';
-        }
-
-        async function startDashboard() {
-            cachedEntries = readLocalArray(STORAGE_KEYS.ENTRIES);
-            cachedTransactions = readLocalArray(STORAGE_KEYS.TX);
-            cachedUsers = readLocalArray(STORAGE_KEYS.USERS);
-
-            setScreenVisibility('dashboard');
-            document.getElementById('userInfoHeader')?.classList.remove('hidden');
-            document.getElementById('syncStatusBar')?.classList.remove('hidden');
-            document.getElementById('userBadge').innerText = `${currentUser.username} (${currentUser.accountType.toUpperCase()})`;
-            document.getElementById('activeUserLabel').innerText = currentUser.username;
-
-            if (isAdminUser()) {
-                document.getElementById('mainTabAdmin')?.classList.remove('hidden');
-            } else {
-                document.getElementById('mainTabAdmin')?.classList.add('hidden');
-            }
-
-            await syncAllFromSheet(false);
-            refreshEveningLivePreview();
-        }
-
-        async function addTransactionItem() {
-            if (!currentUser) return alert("Tafadhali ingia kwanza.");
-            const network = document.getElementById('txNetworkSelect')?.value || "";
-            const type = document.getElementById('txTypeSelect')?.value || "withdraw";
-            const amount = Number(document.getElementById('txAmountInput')?.value) || 0;
-            const commission = Number(document.getElementById('txCommissionInput')?.value) || 0;
-            const date = document.getElementById('entryDate')?.value || getTodayDateStr();
-
-            if (amount <= 0) return alert("Tafadhali weka kiasi cha pesa.");
-
-            setLoading('addTxBtn', true, "Inahifadhi muamala...");
-            try {
-                const txItem = { date, username: currentUser.username, network, type, amount, commission };
-                activeTransactionsToday.unshift(txItem);
-                cachedTransactions.unshift(txItem);
-                writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
-                renderActiveTransactions();
-
-                try {
-                    await apiPostSilent({ action: "add_transaction", transaction: txItem });
-                } catch (e) {}
-
-                document.getElementById('txAmountInput').value = '';
-                document.getElementById('txCommissionInput').value = 0;
-                alert("Hongera! Taarifa za muamala wako zimehifadhiwa vizuri.");
-            } finally {
-                setLoading('addTxBtn', false);
-            }
-        }
-
-        function renderActiveTransactions() {
-            const container = document.getElementById('transactionsListContainer');
-            if (!container) return;
-            if (!activeTransactionsToday.length) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>`;
-                return;
-            }
-            container.innerHTML = activeTransactionsToday.map(item => `
-                <div class="py-2 flex justify-between items-center text-xs">
-                    <div>
-                        <span class="font-bold text-blue-900 uppercase">${item.network}</span>
-                        <span class="text-slate-600">(${item.type})</span>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold">${Number(item.amount).toLocaleString()} TSH</div>
-                        <div class="text-green-700 font-semibold">Comm: ${Number(item.commission).toLocaleString()}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function syncAllFromSheet(showAlert = false) {
-            const statusEl = document.getElementById('syncStatusText');
-            if (statusEl) statusEl.innerText = "Inasawazisha kumbukumbu...";
-            cachedEntries = mergeEntriesSafely(cachedEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
-
-            try {
-                const queryUser = isAdminUser() ? "all" : (currentUser?.username || "all");
-                const [entriesRes, txRes] = await Promise.all([
-                    apiGet("entries", queryUser),
-                    apiGet("transactions", queryUser)
-                ]);
-                const remoteEntries = extractRows(entriesRes);
-                const remoteTx = extractRows(txRes);
-
-                cachedEntries = mergeEntriesSafely(remoteEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
-                writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
-
-                if (remoteTx.length) {
-                    cachedTransactions = remoteTx;
-                    writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
-                }
-
-                if (statusEl) statusEl.innerText = "Mfumo uko tayari — kumbukumbu zimehifadhiwa";
-                if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
-                    renderHistoryEntries();
-                }
-                if (!document.getElementById('viewAdmin')?.classList.contains('hidden')) {
-                    renderAdminUsers();
-                    populateAdminUserFilter();
-                    renderAdminEntriesList();
-                }
-                if (showAlert) alert("Taarifa zako za asubuhi na jioni zimesasishwa vizuri!");
-            } catch (err) {
-                cachedEntries = mergeEntriesSafely(cachedEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
-                if (statusEl) statusEl.innerText = "Mfumo uko tayari — kumbukumbu zimehifadhiwa";
-                if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
-                    renderHistoryEntries();
-                }
-                if (!document.getElementById('viewAdmin')?.classList.contains('hidden')) {
-                    renderAdminUsers();
-                    populateAdminUserFilter();
-                    renderAdminEntriesList();
-                }
-            }
-        }
-
-        async function loadHistoryEntries() {
-            cachedEntries = mergeEntriesSafely(cachedEntries, readLocalArray(STORAGE_KEYS.ENTRIES));
-            renderHistoryEntries();
-            await syncAllFromSheet(false);
-        }
-
-        function setHistoryFilter(mode) {
-            currentHistoryMode = mode;
-            const todayBtn = document.getElementById('filterTodayBtn');
-            const allBtn = document.getElementById('filterAllBtn');
-            const titleEl = document.getElementById('historyHeadingTitle');
-            const hintEl = document.getElementById('historyFilterHint');
-
-            if (mode === 'today') {
-                if (todayBtn) todayBtn.className = "bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold";
-                if (allBtn) allBtn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold";
-                if (titleEl) titleEl.innerText = "Kumbukumbu za Leo";
-                if (hintEl) hintEl.innerText = `Inaonyesha kumbukumbu zako za leo (${getTodayDateStr()}).`;
-            } else {
-                if (allBtn) allBtn.className = "bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold";
-                if (todayBtn) todayBtn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold";
-                if (titleEl) titleEl.innerText = "Kumbukumbu Zote Zisizofutika";
-                if (hintEl) hintEl.innerText = "Inaonyesha kumbukumbu zako zote za asubuhi na jioni zilizohifadhiwa.";
-            }
-            renderHistoryEntries();
-        }
-
-        function getFilteredHistoryList() {
-            const uLower = String(currentUser?.username || '').trim().toLowerCase();
-            const todayStr = getTodayDateStr();
-
-            return (cachedEntries || []).filter(row => {
-                const rUser = String(row.username || '').trim().toLowerCase();
-                if (!isAdminUser() && rUser && uLower && rUser !== uLower) return false;
-                if (currentHistoryMode === 'today') {
-                    const rDate = String(row.date || row.timestamp || '').slice(0, 10);
-                    return rDate === todayStr;
-                }
-                return true;
-            });
-        }
-
-        function renderHistoryEntries() {
-            const container = document.getElementById('historyContainer');
-            if (!container) return;
-
-            const list = getFilteredHistoryList();
-            if (!list.length) {
-                const emptyText = currentHistoryMode === 'today'
-                    ? "Hakuna kumbukumbu zilizohifadhiwa kwa leo bado."
-                    : "Bado hakuna kumbukumbu zozote zilizohifadhiwa.";
-                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">${emptyText}</p>`;
-                return;
-            }
-
-            container.innerHTML = list.slice().reverse().map((row, idx) => `
-                <div onclick="openEntryDetailModal(${idx})" class="cursor-pointer bg-white p-4 rounded-xl border shadow-sm hover:border-blue-400 flex justify-between items-center text-xs transition">
-                    <div>
-                        <div class="font-bold text-blue-900">${row.date || ''} ${row.day ? '(' + row.day + ')' : ''} — <span class="uppercase">${row.type || ''}</span></div>
-                        <div class="text-slate-500 mt-0.5">Mtumiaji: ${row.username || currentUser?.username || ''} | ${row.notes || ''}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold text-sm text-slate-800">${Number(row.total ?? row.amount ?? 0).toLocaleString()} TSH</div>
-                        ${row.varianceStatus && row.varianceStatus !== 'normal' && row.varianceStatus !== 'morning_open' ? `<div class="font-semibold text-amber-700">${row.varianceStatus}: ${Number(row.varianceAmount || 0).toLocaleString()}</div>` : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openEntryDetailModal(reversedIdx) {
-            const list = getFilteredHistoryList().slice().reverse();
-            const item = list[reversedIdx];
-            if (!item) return;
-
-            document.getElementById('modalTitle').innerText = `Kumbukumbu: ${item.date || ''} (${String(item.type || '').toUpperCase()})`;
-            document.getElementById('modalBody').innerHTML = `
-                <div class="p-4 bg-slate-50 rounded-lg border space-y-2">
-                    <div><b>Akaunti:</b> ${item.username || currentUser?.username || ''}</div>
-                    <div><b>Tarehe:</b> ${item.date || ''} ${item.day ? '(' + item.day + ')' : ''}</div>
-                    <div><b>Kipindi:</b> ${String(item.type || '').toUpperCase()}</div>
-                    <div><b>Jumla:</b> ${Number(item.total ?? item.amount ?? 0).toLocaleString()} TSH</div>
-                    <div><b>Maelezo:</b> ${item.notes || '-'}</div>
-                </div>
-            `;
-            document.getElementById('detailModal')?.classList.remove('hidden');
-        }
-
-        function populateAdminUserFilter() {
-            const sel = document.getElementById('adminUserFilterSelect');
-            if (!sel) return;
-            const currentVal = sel.value || 'ALL';
-            const names = new Set();
-            (cachedUsers || []).forEach(u => { if (u.username) names.add(String(u.username).trim()); });
-            (cachedEntries || []).forEach(r => { if (r.username) names.add(String(r.username).trim()); });
-
-            sel.innerHTML = `<option value="ALL">Watumiaji Wote (All Users)</option>` +
-                Array.from(names).map(n => `<option value="${n}">${n}</option>`).join('');
-
-            if (Array.from(sel.options).some(o => o.value === currentVal)) {
-                sel.value = currentVal;
-            }
-        }
-
-        function renderAdminUsers() {
-            const tbody = document.getElementById('adminUsersTable');
-            if (!tbody) return;
-            tbody.innerHTML = (cachedUsers || []).map(u => `
-                <tr class="border-t text-xs">
-                    <td class="p-3 font-semibold">${u.username || ''}</td>
-                    <td class="p-3">${u.accountType || ''}</td>
-                    <td class="p-3">${u.phone || ''}</td>
-                    <td class="p-3 font-mono">${u.password || ''}</td>
-                </tr>
-            `).join('');
-        }
-
-        function renderAdminEntriesList() {
-            const container = document.getElementById('adminEntriesContainer');
-            if (!container) return;
-
-            const selectedUser = String(document.getElementById('adminUserFilterSelect')?.value || 'ALL').trim().toLowerCase();
-            const term = String(document.getElementById('adminSearchInput')?.value || '').trim().toLowerCase();
-
-            const entriesWithIndex = (cachedEntries || []).map((row, originalIndex) => ({ row, originalIndex }));
-            const filtered = entriesWithIndex.filter(({ row }) => {
-                const rUser = String(row.username || '').trim().toLowerCase();
-                if (selectedUser !== 'all' && rUser !== selectedUser) return false;
-                if (!term) return true;
-                const hay = `${row.username || ''} ${row.date || ''} ${row.type || ''} ${row.notes || ''}`.toLowerCase();
-                return hay.includes(term);
-            }).reverse();
-
-            if (!filtered.length) {
-                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Hakuna kumbukumbu za kuonyesha.</p>`;
-                return;
-            }
-
-            container.innerHTML = filtered.map(({ row, originalIndex }) => `
-                <div class="p-3 rounded-lg border bg-slate-50 flex flex-wrap justify-between items-center gap-3 text-xs">
-                    <div>
-                        <div class="font-bold text-slate-800">${row.date || ''} — <span class="text-blue-900 uppercase">${row.type || ''}</span> — <span class="text-amber-800">User: ${row.username || ''}</span></div>
-                        <div class="text-slate-600 mt-0.5">Jumla: <b>${Number(row.total ?? row.amount ?? 0).toLocaleString()} TSH</b> | ${row.notes || ''}</div>
-                    </div>
-                    <button type="button" onclick="adminDeleteEntry(${originalIndex})" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-bold">
-                        Futa
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        async function adminDeleteEntry(originalIndex) {
-            if (!isAdminUser()) return alert("Huna ruhusa ya kufuta kumbukumbu.");
-            const target = cachedEntries[originalIndex];
-            if (!target) return;
-
-            const sure = confirm(
-                `Je, una uhakika unataka kufuta kumbukumbu hii ya user "${target.username || ''}"?\n` +
-                `Tarehe: ${target.date || ''} (${target.type || ''})\n` +
-                `Kiasi: ${Number(target.total ?? target.amount ?? 0).toLocaleString()} TSH`
-            );
-            if (!sure) return;
-
-            try {
-                await apiPostSilent({ action: "delete_entry", entry: target });
-            } catch (e) {}
-
-            cachedEntries.splice(originalIndex, 1);
-            writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
-            populateAdminUserFilter();
-            renderAdminEntriesList();
-            renderHistoryEntries();
-            refreshEveningLivePreview();
-            alert("Kumbukumbu ya user imefutwa vizuri.");
-        }
-
-        function switchMainTab(tab) {
-            ['new', 'history', 'admin'].forEach(t => {
-                document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`)?.classList.add('hidden');
-            });
-            if (tab === 'new') {
-                document.getElementById('viewNew')?.classList.remove('hidden');
-                refreshEveningLivePreview();
-            }
-            if (tab === 'history') {
-                document.getElementById('viewHistory')?.classList.remove('hidden');
-                setHistoryFilter(currentHistoryMode || 'all');
-                loadHistoryEntries();
-            }
-            if (tab === 'admin') {
-                document.getElementById('viewAdmin')?.classList.remove('hidden');
-                renderAdminUsers();
-                populateAdminUserFilter();
-                renderAdminEntriesList();
-            }
-        }
-
-        function switchSubTab(num) {
-            [1, 2, 3].forEach(i => {
-                document.getElementById(`section${i}`)?.classList.add('hidden');
-                const btn = document.getElementById(`subTab${i}`);
-                if (btn) btn.className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
-            });
-            document.getElementById(`section${num}`)?.classList.remove('hidden');
-            const activeBtn = document.getElementById(`subTab${num}`);
-            if (activeBtn) activeBtn.className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
-            if (num === 2) refreshEveningLivePreview();
-        }
-
-        function logout() {
-            localStorage.removeItem(STORAGE_KEYS.SESSION);
-            currentUser = null;
-            location.reload();
-        }
-
-        function goBackHome() {
-            switchMainTab('new');
-        }
-
-        function closeModal() {
-            document.getElementById('detailModal')?.classList.add('hidden');
-        }
-
-        window.addEventListener('DOMContentLoaded', function() {
-            const dateInputEl = document.getElementById('entryDate');
-            if (dateInputEl) {
-                dateInputEl.valueAsDate = new Date();
-                autoSelectDayOfWeek();
-            }
-            renderDynamicForms();
-            populateNetworkSelect();
-            cachedEntries = readLocalArray(STORAGE_KEYS.ENTRIES);
-            cachedTransactions = readLocalArray(STORAGE_KEYS.TX);
-            cachedUsers = readLocalArray(STORAGE_KEYS.USERS);
-
-            try {
-                const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
-                if (savedSession) {
-                    currentUser = JSON.parse(savedSession);
-                    if (currentUser && currentUser.username) {
-                        startDashboard();
-                        return;
-                    }
-                }
-            } catch (e) {}
-
-            showLoginForm();
-        });
-    </script>
-</body>
-</html>
+            const newPassword = document.getElementById('forgotNew
