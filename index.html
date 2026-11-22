@@ -376,7 +376,7 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbwZYkH1CRdDkGsPREITZlFUDL5hOwpzJE3unreeSIhMjWPE4liPz35NMmzDy6Wx6Fc/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbxnAWCtE32FJhVUfowX28b39NrvoHAsh1bdwwz2QTUWZK8m1iv1O-8IO2Las5AJ-ro/exec";
         const STORAGE_KEYS = {
             ENTRIES: "jombay_saved_entries_v5",
             TX: "jombay_saved_tx_v5",
@@ -478,546 +478,570 @@
                     phone: norm.phone || (existing ? existing.phone : ''),
                     email: norm.email || (existing ? existing.email : ''),
                     accountType: norm.accountType || (existing ? existing.accountType : 'regular'),
-                    role: norm.role || (existing ? existing.role : ''),
-                    status: u.status !== undefined ? normalizeStatus(u.status) : (existing ? existing.status : 'active')
+                    status: norm.status || (existing ? existing.status : 'active')
                 });
             });
             return Array.from(map.values());
         }
 
-        function entryKeyOf(e) {
-            return [
-                String(e.username || '').trim().toLowerCase(),
-                String(e.date || '').slice(0, 10),
-                String(e.type || '').trim().toLowerCase(),
-                String(e._id || '').trim()
-            ].join('|');
+        function isUserAdmin(u) {
+            if (!u) return false;
+            const acct = String(u.accountType || '').toLowerCase();
+            const role = String(u.role || '').toLowerCase();
+            const uname = String(u.username || '').toLowerCase();
+            return acct === 'admin' || role === 'admin' || uname === 'admin';
+        }
+
+        function getEntryKey(e) {
+            const u = String(e.username || e.user || '').trim().toLowerCase();
+            const d = String(e.date || e.entryDate || '').trim();
+            return `${u}__${d}`;
+        }
+
+        function normalizeEntryObj(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            const username = String(raw.username || raw.user || '').trim();
+            const date = String(raw.date || raw.entryDate || '').trim();
+            if (!username && !date) return null;
+            const morningFloats = raw.morningFloats && typeof raw.morningFloats === 'object' ? raw.morningFloats : {};
+            const eveningFloats = raw.eveningFloats && typeof raw.eveningFloats === 'object' ? raw.eveningFloats : {};
+            const cashMorning = Number(raw.cashMorning ?? raw.morningCash ?? 0) || 0;
+            const cashNight = Number(raw.cashNight ?? raw.eveningCash ?? 0) || 0;
+            const morningTotal = Number(raw.morningTotal) || (cashMorning + Object.values(morningFloats).reduce((a, b) => a + (Number(b) || 0), 0));
+            const eveningTotal = Number(raw.eveningTotal) || (cashNight + Object.values(eveningFloats).reduce((a, b) => a + (Number(b) || 0), 0));
+            const commissionTotal = Number(raw.commissionTotal ?? raw.totalCommission ?? 0) || 0;
+            return {
+                username,
+                date,
+                dayOfWeek: String(raw.dayOfWeek || raw.day || '').trim(),
+                cashMorning,
+                morningFloats,
+                morningTotal,
+                cashNight,
+                eveningFloats,
+                eveningTotal,
+                commissionTotal,
+                updatedAt: raw.updatedAt || raw.timestamp || new Date().toISOString()
+            };
         }
 
         function mergeEntriesSafely(remoteList, localList) {
             const map = new Map();
-            (Array.isArray(localList) ? localList : []).forEach(e => {
-                if (e && (e.username || e.date)) {
-                    map.set(entryKeyOf(e), e);
+            (Array.isArray(localList) ? localList : []).forEach(item => {
+                const norm = normalizeEntryObj(item);
+                if (!norm) return;
+                const key = getEntryKey(norm);
+                if (pendingEntryKeys.has(key)) {
+                    map.set(key, norm);
                 }
             });
-            (Array.isArray(remoteList) ? remoteList : []).forEach(e => {
-                if (e && (e.username || e.date)) {
-                    map.set(entryKeyOf(e), e);
+            (Array.isArray(remoteList) ? remoteList : []).forEach(item => {
+                const norm = normalizeEntryObj(item);
+                if (!norm) return;
+                const key = getEntryKey(norm);
+                const localItem = map.get(key);
+                if (!localItem) {
+                    map.set(key, norm);
+                } else {
+                    map.set(key, {
+                        ...norm,
+                        cashMorning: norm.cashMorning || localItem.cashMorning,
+                        morningFloats: Object.keys(norm.morningFloats).length ? norm.morningFloats : localItem.morningFloats,
+                        morningTotal: norm.morningTotal || localItem.morningTotal,
+                        cashNight: norm.cashNight || localItem.cashNight,
+                        eveningFloats: Object.keys(norm.eveningFloats).length ? norm.eveningFloats : localItem.eveningFloats,
+                        eveningTotal: norm.eveningTotal || localItem.eveningTotal,
+                        commissionTotal: Math.max(norm.commissionTotal, localItem.commissionTotal)
+                    });
                 }
             });
-            return Array.from(map.values());
+            return Array.from(map.values()).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        }
+
+        function normalizeTxObj(t) {
+            if (!t || typeof t !== 'object') return null;
+            return {
+                id: t.id || ('tx_' + Math.random().toString(36).slice(2, 9)),
+                username: String(t.username || t.user || (currentUser ? currentUser.username : '')).trim(),
+                date: String(t.date || todayISO()).trim(),
+                networkId: String(t.networkId || '').trim(),
+                networkName: String(t.networkName || t.network || '').trim(),
+                type: String(t.type || 'withdraw').trim(),
+                amount: Number(t.amount || 0) || 0,
+                commission: Number(t.commission || 0) || 0,
+                createdAt: t.createdAt || t.timestamp || new Date().toISOString()
+            };
         }
 
         function mergeTxSafely(remoteList, localList) {
             const map = new Map();
             (Array.isArray(localList) ? localList : []).forEach(t => {
-                if (!t) return;
-                const k = String(t._id || `${t.username}|${t.date}|${t.netName}|${t.amount}|${t.timestamp || ''}`);
-                map.set(k, t);
+                const norm = normalizeTxObj(t);
+                if (norm) map.set(String(norm.id), norm);
             });
             (Array.isArray(remoteList) ? remoteList : []).forEach(t => {
-                if (!t) return;
-                const k = String(t._id || `${t.username}|${t.date}|${t.netName}|${t.amount}|${t.timestamp || ''}`);
-                map.set(k, t);
+                const norm = normalizeTxObj(t);
+                if (norm) map.set(String(norm.id), norm);
             });
             return Array.from(map.values());
         }
 
-        async function apiGetAll() {
-            const res = await fetch(API_URL, { method: 'GET', cache: 'no-store' });
+        async function apiGet(paramsObj) {
+            const url = new URL(API_URL);
+            Object.entries(paramsObj || {}).forEach(([k, v]) => {
+                if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+            });
+            url.searchParams.set('_t', String(Date.now()));
+            const res = await fetch(url.toString(), { method: 'GET', cache: 'no-store' });
             const text = await res.text();
-            return JSON.parse(text);
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                return { ok: false, error: 'Invalid JSON response from server' };
+            }
         }
 
         async function apiPost(payload) {
             const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload || {})
             });
             const text = await res.text();
-            return JSON.parse(text);
-        }
-
-        async function syncAllFromSheet(showBanner = false) {
             try {
-                const data = await apiGetAll();
-                if (data && data.ok) {
-                    const localUsers = readLocalArray(STORAGE_KEYS.USERS);
-                    cachedUsers = mergeUsersSafely(data.users, localUsers);
-                    writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
-
-                    if (Array.isArray(data.entries)) {
-                        const localEntries = readLocalArray(STORAGE_KEYS.ENTRIES).filter(e =>
-                            pendingEntryKeys.has(entryKeyOf(e))
-                        );
-                        cachedEntries = mergeEntriesSafely(data.entries, localEntries);
-                        writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
-                    }
-
-                    if (Array.isArray(data.transactions)) {
-                        const localTx = readLocalArray(STORAGE_KEYS.TX);
-                        cachedTransactions = mergeTxSafely(data.transactions, localTx);
-                        writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
-                    }
-
-                    if (currentUser) {
-                        const refreshedMe = cachedUsers.find(u =>
-                            u.username.toLowerCase() === currentUser.username.toLowerCase()
-                        );
-                        if (refreshedMe) {
-                            currentUser = refreshedMe;
-                            localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(currentUser));
-                        }
-                        renderHistory();
-                        renderAdminPanel();
-                        refreshMorningTotalPreview();
-                        refreshEveningLivePreview();
-                        renderTransactionsList();
-                    }
-
-                    if (showBanner) {
-                        setSyncStatus('Data imesasishwa kutoka Google Sheet.');
-                    }
-                }
-            } catch (err) {
-                if (showBanner) {
-                    setSyncStatus('Imeshindwa kusawazisha na Sheet — inaonyesha data iliyohifadhiwa.');
-                }
+                return JSON.parse(text);
+            } catch (e) {
+                return { ok: false, error: 'Invalid JSON response from server' };
             }
         }
 
-        function isAdminUser(u) {
-            if (!u) return false;
-            const uname = String(u.username || '').trim().toLowerCase();
-            const role = String(u.role || '').trim().toLowerCase();
-            const acct = String(u.accountType || '').trim().toLowerCase();
-            return role === 'admin' || acct === 'admin' || uname === 'admin';
-        }
+        function initFloatInputs() {
+            const mCont = document.getElementById('morningFloatContainer');
+            const eCont = document.getElementById('eveningFloatContainer');
+            const txSelect = document.getElementById('txNetworkSelect');
 
-        function autoSelectDayOfWeek() {
-            const dateVal = document.getElementById('entryDate').value;
-            if (!dateVal) return;
-            const d = new Date(dateVal + 'T00:00:00');
-            const days = ['Jumapili', 'Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa', 'Jumamosi'];
-            const dayName = days[d.getDay()];
-            if (dayName) {
-                document.getElementById('entryDayOfWeek').value = dayName;
-            }
-            refreshMorningTotalPreview();
-            refreshEveningLivePreview();
-            renderTransactionsList();
-        }
-
-        function renderNetworkInputs() {
-            const mWrap = document.getElementById('morningFloatContainer');
-            const eWrap = document.getElementById('eveningFloatContainer');
-            const txSel = document.getElementById('txNetworkSelect');
-
-            mWrap.innerHTML = NETWORKS_CONFIG.map(net => `
-                <div class="bg-white border rounded-xl p-3 shadow-sm">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">${net.name} (Asubuhi)</label>
-                    <input type="number" id="m_${net.id}" oninput="refreshMorningTotalPreview()" placeholder="0" class="w-full border rounded-lg p-2 text-sm font-bold outline-none">
+            mCont.innerHTML = NETWORKS_CONFIG.map(net => `
+                <div class="bg-white rounded-xl border p-3 shadow-sm">
+                    <label class="block text-xs font-bold text-blue-900 mb-1">${net.name} (Float Asubuhi)</label>
+                    <input type="number" id="m_float_${net.id}" oninput="refreshMorningTotalPreview()" placeholder="0" class="w-full border rounded-lg p-2 text-sm font-semibold outline-none">
                 </div>
             `).join('');
 
-            eWrap.innerHTML = NETWORKS_CONFIG.map(net => `
-                <div class="bg-slate-50 border rounded-xl p-3">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">${net.name} (Jioni)</label>
-                    <input type="number" id="e_${net.id}" oninput="refreshEveningLivePreview()" placeholder="0" class="w-full border rounded-lg p-2 text-sm font-bold bg-white outline-none">
+            eCont.innerHTML = NETWORKS_CONFIG.map(net => `
+                <div class="bg-slate-50 rounded-xl border p-3">
+                    <label class="block text-xs font-bold text-indigo-900 mb-1">${net.name} (Float Jioni)</label>
+                    <input type="number" id="e_float_${net.id}" oninput="refreshEveningLivePreview()" placeholder="0" class="w-full border rounded-lg p-2 text-sm font-semibold bg-white outline-none">
                 </div>
             `).join('');
 
-            txSel.innerHTML = NETWORKS_CONFIG.map(net => `
+            txSelect.innerHTML = NETWORKS_CONFIG.map(net => `
                 <option value="${net.id}">${net.name}</option>
             `).join('');
         }
 
-        function sumNetworks(prefix) {
-            let sum = 0;
-            NETWORKS_CONFIG.forEach(net => {
-                const el = document.getElementById(`${prefix}_${net.id}`);
-                sum += Number(el && el.value) || 0;
-            });
-            return sum;
+        function autoSelectDayOfWeek() {
+            const val = document.getElementById('entryDate').value;
+            if (!val) return;
+            const d = new Date(val + 'T00:00:00');
+            if (isNaN(d.getTime())) return;
+            const days = ['Jumapili', 'Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa', 'Jumamosi'];
+            document.getElementById('entryDayOfWeek').value = days[d.getDay()];
+            loadCurrentDayFormValues();
         }
 
-        function collectNetworksObj(prefix) {
-            const obj = {};
+        function computeMorningTotalFromInputs() {
+            let total = Number(document.getElementById('cashMorning').value) || 0;
             NETWORKS_CONFIG.forEach(net => {
-                const el = document.getElementById(`${prefix}_${net.id}`);
-                obj[net.id] = Number(el && el.value) || 0;
+                const el = document.getElementById('m_float_' + net.id);
+                if (el) total += Number(el.value) || 0;
             });
-            return obj;
+            return total;
+        }
+
+        function computeEveningTotalFromInputs() {
+            let total = Number(document.getElementById('cashNight').value) || 0;
+            NETWORKS_CONFIG.forEach(net => {
+                const el = document.getElementById('e_float_' + net.id);
+                if (el) total += Number(el.value) || 0;
+            });
+            return total;
         }
 
         function refreshMorningTotalPreview() {
-            const cash = Number(document.getElementById('cashMorning').value) || 0;
-            const netSum = sumNetworks('m');
-            const total = cash + netSum;
+            const total = computeMorningTotalFromInputs();
             document.getElementById('morningTotalDisplay').textContent = formatTSH(total);
             refreshEveningLivePreview();
         }
 
-        function findMorningEntryForDate(dateStr) {
-            if (!currentUser || !dateStr) return null;
-            const uname = currentUser.username.toLowerCase();
-            return cachedEntries.find(e =>
-                String(e.username || '').trim().toLowerCase() === uname &&
-                String(e.date || '').slice(0, 10) === dateStr &&
-                String(e.type || '').trim().toLowerCase() === 'morning'
-            ) || null;
-        }
-
         function refreshEveningLivePreview() {
-            const cash = Number(document.getElementById('cashNight').value) || 0;
-            const netSum = sumNetworks('e');
-            const eveningTotal = cash + netSum;
-            document.getElementById('eveningTotalDisplay').textContent = formatTSH(eveningTotal);
+            const eTotal = computeEveningTotalFromInputs();
+            document.getElementById('eveningTotalDisplay').textContent = formatTSH(eTotal);
 
+            const mTotal = computeMorningTotalFromInputs();
             const box = document.getElementById('eveningVarianceBox');
-            const dateVal = document.getElementById('entryDate').value;
-            const mEntry = findMorningEntryForDate(dateVal);
-
-            if (!mEntry) {
-                box.className = 'p-3.5 rounded-xl border text-xs font-semibold bg-amber-50 border-amber-200 text-amber-900';
+            if (mTotal > 0 || eTotal > 0) {
+                const diff = eTotal - mTotal;
                 box.classList.remove('hidden');
-                box.textContent = 'Hakuna rekodi ya Mtaji wa Asubuhi iliyohifadhiwa kwa tarehe hii bado.';
-                return;
-            }
-
-            const morningTotal = Number(mEntry.total ?? mEntry.morningTotal) || 0;
-            const diff = eveningTotal - morningTotal;
-            box.classList.remove('hidden');
-
-            if (diff >= 0) {
-                box.className = 'p-3.5 rounded-xl border text-xs font-semibold bg-green-50 border-green-300 text-green-900 space-y-1';
-                box.innerHTML = `
-                    <div>Mtaji wa Asubuhi: <b>${formatTSH(morningTotal)}</b> | Hesabu ya Jioni: <b>${formatTSH(eveningTotal)}</b></div>
-                    <div>Ziada / Ukuaji wa Salio: <b>+${formatTSH(diff)}</b></div>
-                `;
+                if (diff > 0) {
+                    box.className = "p-3.5 rounded-xl border border-green-300 bg-green-50 text-green-900 text-xs font-semibold space-y-1";
+                    box.innerHTML = `<div>Mtaji wa Asubuhi: <b>${formatTSH(mTotal)}</b> | Hesabu ya Jioni: <b>${formatTSH(eTotal)}</b></div><div>Ziada / Ongezeko la Salio: <b>+${formatTSH(diff)}</b></div>`;
+                } else if (diff < 0) {
+                    box.className = "p-3.5 rounded-xl border border-red-300 bg-red-50 text-red-900 text-xs font-semibold space-y-1";
+                    box.innerHTML = `<div>Mtaji wa Asubuhi: <b>${formatTSH(mTotal)}</b> | Hesabu ya Jioni: <b>${formatTSH(eTotal)}</b></div><div>Upungufu wa Salio: <b>${formatTSH(diff)}</b></div>`;
+                } else {
+                    box.className = "p-3.5 rounded-xl border border-blue-300 bg-blue-50 text-blue-900 text-xs font-semibold space-y-1";
+                    box.innerHTML = `<div>Mtaji wa Asubuhi: <b>${formatTSH(mTotal)}</b> | Hesabu ya Jioni: <b>${formatTSH(eTotal)}</b></div><div>Salio limelingana kabisa (0 TSH)</div>`;
+                }
             } else {
-                box.className = 'p-3.5 rounded-xl border text-xs font-semibold bg-red-50 border-red-300 text-red-900 space-y-1';
-                box.innerHTML = `
-                    <div>Mtaji wa Asubuhi: <b>${formatTSH(morningTotal)}</b> | Hesabu ya Jioni: <b>${formatTSH(eveningTotal)}</b></div>
-                    <div>Upungufu wa Salio: <b>${formatTSH(diff)}</b></div>
-                `;
-            }
-        }
-
-        async function saveMorningEntry() {
-            if (!currentUser) return;
-            const btn = document.getElementById('saveMorningBtn');
-            const dateVal = document.getElementById('entryDate').value || todayISO();
-            const dayVal = document.getElementById('entryDayOfWeek').value;
-            const cashVal = Number(document.getElementById('cashMorning').value) || 0;
-            const nets = collectNetworksObj('m');
-            const floatSum = Object.values(nets).reduce((a, b) => a + b, 0);
-            const totalVal = cashVal + floatSum;
-
-            const entryObj = {
-                _id: `entry_${currentUser.username}_${dateVal}_morning`,
-                username: currentUser.username,
-                date: dateVal,
-                dayOfWeek: dayVal,
-                type: 'morning',
-                cash: cashVal,
-                cashMorning: cashVal,
-                cashNight: 0,
-                networks: nets,
-                float: floatSum,
-                total: totalVal,
-                morningTotal: totalVal,
-                variance: 0,
-                totalCommission: 0,
-                timestamp: new Date().toISOString()
-            };
-
-            const k = entryKeyOf(entryObj);
-            pendingEntryKeys.add(k);
-            cachedEntries = mergeEntriesSafely([entryObj], cachedEntries);
-            writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
-            refreshEveningLivePreview();
-            renderHistory();
-
-            btn.disabled = true;
-            btn.textContent = 'Inahifadhi...';
-            try {
-                await apiPost({ action: 'saveEntry', entry: entryObj });
-                pendingEntryKeys.delete(k);
-                await syncAllFromSheet(true);
-                alert('Mtaji wa Asubuhi umehifadhiwa vizuri kwenye Google Sheet!');
-            } catch (err) {
-                alert('Imehifadhiwa kwenye kifaa; imeshindwa kutuma moja kwa moja: ' + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Hifadhi Mtaji wa Asubuhi';
-            }
-        }
-
-        async function saveEveningEntry() {
-            if (!currentUser) return;
-            const btn = document.getElementById('saveEveningBtn');
-            const dateVal = document.getElementById('entryDate').value || todayISO();
-            const dayVal = document.getElementById('entryDayOfWeek').value;
-            const cashVal = Number(document.getElementById('cashNight').value) || 0;
-            const nets = collectNetworksObj('e');
-            const floatSum = Object.values(nets).reduce((a, b) => a + b, 0);
-            const totalVal = cashVal + floatSum;
-
-            const mEntry = findMorningEntryForDate(dateVal);
-            const morningTotal = mEntry ? (Number(mEntry.total ?? mEntry.morningTotal) || 0) : 0;
-            const variance = totalVal - morningTotal;
-
-            const dayTx = getTransactionsForDateAndUser(dateVal, currentUser.username);
-            const totalComm = dayTx.reduce((s, t) => s + (Number(t.commission) || 0), 0);
-
-            const entryObj = {
-                _id: `entry_${currentUser.username}_${dateVal}_evening`,
-                username: currentUser.username,
-                date: dateVal,
-                dayOfWeek: dayVal,
-                type: 'evening',
-                cash: cashVal,
-                cashMorning: mEntry ? (Number(mEntry.cashMorning ?? mEntry.cash) || 0) : 0,
-                cashNight: cashVal,
-                networks: nets,
-                float: floatSum,
-                total: totalVal,
-                morningTotal,
-                variance,
-                totalCommission: totalComm,
-                timestamp: new Date().toISOString()
-            };
-
-            const k = entryKeyOf(entryObj);
-            pendingEntryKeys.add(k);
-            cachedEntries = mergeEntriesSafely([entryObj], cachedEntries);
-            writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
-            renderHistory();
-
-            btn.disabled = true;
-            btn.textContent = 'Inahifadhi Funga Siku...';
-            try {
-                await apiPost({ action: 'saveEntry', entry: entryObj });
-                pendingEntryKeys.delete(k);
-                await syncAllFromSheet(true);
-                alert('Funga Hesabu ya Jioni imehifadhiwa vizuri kwenye Google Sheet!');
-            } catch (err) {
-                alert('Imehifadhiwa kwenye kifaa; imeshindwa kutuma moja kwa moja: ' + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Kamilisha na Hifadhi Funga Siku';
+                box.classList.add('hidden');
             }
         }
 
         function updateCommissionPreview() {
             const netId = document.getElementById('txNetworkSelect').value;
-            const txType = document.getElementById('txTypeSelect').value;
+            const type = document.getElementById('txTypeSelect').value;
             const amount = Number(document.getElementById('txAmountInput').value) || 0;
-            const cfg = NETWORKS_CONFIG.find(n => n.id === netId) || NETWORKS_CONFIG[0];
-            const rate = txType === 'send' ? cfg.sendRate : cfg.withdrawRate;
-            const comm = Math.round(amount * rate);
-            document.getElementById('txCommissionInput').value = amount > 0 ? comm : 0;
+            const net = NETWORKS_CONFIG.find(n => n.id === netId) || NETWORKS_CONFIG[0];
+            const rate = type === 'send' ? net.sendRate : net.withdrawRate;
+            const calc = Math.round(amount * rate);
+            document.getElementById('txCommissionInput').value = amount > 0 ? calc : 0;
         }
 
-        function getTransactionsForDateAndUser(dateStr, username) {
-            const uname = String(username || '').trim().toLowerCase();
-            return cachedTransactions.filter(t =>
-                String(t.username || '').trim().toLowerCase() === uname &&
-                String(t.date || '').slice(0, 10) === dateStr
-            );
-        }
-
-        function renderTransactionsList() {
+        function loadCurrentDayFormValues() {
             if (!currentUser) return;
             const dateVal = document.getElementById('entryDate').value || todayISO();
-            const list = getTransactionsForDateAndUser(dateVal, currentUser.username);
-            activeTransactionsToday = list;
+            const existing = cachedEntries.find(e => String(e.username).toLowerCase() === String(currentUser.username).toLowerCase() && e.date === dateVal);
 
-            const totalComm = list.reduce((sum, item) => sum + (Number(item.commission) || 0), 0);
+            document.getElementById('cashMorning').value = existing && existing.cashMorning ? existing.cashMorning : '';
+            NETWORKS_CONFIG.forEach(net => {
+                const el = document.getElementById('m_float_' + net.id);
+                if (el) el.value = existing && existing.morningFloats && existing.morningFloats[net.id] ? existing.morningFloats[net.id] : '';
+            });
+
+            document.getElementById('cashNight').value = existing && existing.cashNight ? existing.cashNight : '';
+            NETWORKS_CONFIG.forEach(net => {
+                const el = document.getElementById('e_float_' + net.id);
+                if (el) el.value = existing && existing.eveningFloats && existing.eveningFloats[net.id] ? existing.eveningFloats[net.id] : '';
+            });
+
+            activeTransactionsToday = cachedTransactions.filter(t =>
+                String(t.username).toLowerCase() === String(currentUser.username).toLowerCase() &&
+                t.date === dateVal
+            );
+
+            refreshMorningTotalPreview();
+            refreshEveningLivePreview();
+            renderTransactionsForDay();
+        }
+
+        function renderTransactionsForDay() {
+            const cont = document.getElementById('transactionsListContainer');
+            const totalComm = activeTransactionsToday.reduce((sum, item) => sum + (Number(item.commission) || 0), 0);
             document.getElementById('totalCommissionBadge').textContent = formatTSH(totalComm);
             document.getElementById('totalCommissionDisplay').textContent = formatTSH(totalComm);
 
-            const wrap = document.getElementById('transactionsListContainer');
-            if (!list.length) {
-                wrap.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">Hakuna muamala kwa tarehe hii bado.</p>';
+            if (!activeTransactionsToday.length) {
+                cont.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>`;
                 return;
             }
 
-            wrap.innerHTML = list.map(t => `
+            cont.innerHTML = activeTransactionsToday.map((tx, idx) => `
                 <div class="py-2 flex justify-between items-center text-xs">
                     <div>
-                        <span class="font-bold text-blue-900">${t.netName || ''}</span>
-                        <span class="uppercase text-[10px] bg-slate-100 px-1.5 py-0.5 rounded ml-1">${t.type || ''}</span>
-                        <span class="text-slate-500 ml-1">${t.date || ''}</span>
+                        <span class="font-bold text-blue-900">${tx.networkName}</span>
+                        <span class="ml-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">${tx.type === 'send' ? 'Kutuma' : 'Kutoa'}</span>
+                        <div class="text-slate-600 mt-0.5">Kiasi: <b>${formatTSH(tx.amount)}</b> | Kamisheni: <b class="text-green-700">${formatTSH(tx.commission)}</b></div>
                     </div>
-                    <div class="text-right">
-                        <div class="font-bold">${formatTSH(t.amount)}</div>
-                        <div class="text-green-700 font-semibold">Comm: +${formatTSH(t.commission)}</div>
-                    </div>
+                    <button type="button" onclick="removeTransactionItem(${idx})" class="text-red-600 font-bold text-xs underline">Ondoa</button>
                 </div>
             `).join('');
         }
 
         async function addTransactionItem() {
             if (!currentUser) return;
-            const btn = document.getElementById('addTxBtn');
-            const dateVal = document.getElementById('entryDate').value || todayISO();
             const netId = document.getElementById('txNetworkSelect').value;
-            const netCfg = NETWORKS_CONFIG.find(n => n.id === netId) || NETWORKS_CONFIG[0];
-            const txType = document.getElementById('txTypeSelect').value;
+            const type = document.getElementById('txTypeSelect').value;
             const amount = Number(document.getElementById('txAmountInput').value) || 0;
-            const comm = Number(document.getElementById('txCommissionInput').value) || 0;
-
+            const commission = Number(document.getElementById('txCommissionInput').value) || 0;
             if (amount <= 0) {
-                alert('Weka kiasi cha muamala kikubwa kuliko 0.');
+                alert('Weka kiasi halali cha muamala.');
                 return;
             }
+            const net = NETWORKS_CONFIG.find(n => n.id === netId) || NETWORKS_CONFIG[0];
+            const dateVal = document.getElementById('entryDate').value || todayISO();
 
-            const prevComm = getTransactionsForDateAndUser(dateVal, currentUser.username)
-                .reduce((s, x) => s + (Number(x.commission) || 0), 0);
-
-            const txObj = {
-                _id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            const txObj = normalizeTxObj({
+                id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
                 username: currentUser.username,
                 date: dateVal,
-                netName: netCfg.name,
-                type: txType,
+                networkId: net.id,
+                networkName: net.name,
+                type,
                 amount,
-                commission: comm,
-                totalCommission: prevComm + comm,
-                timestamp: new Date().toISOString()
-            };
+                commission,
+                createdAt: new Date().toISOString()
+            });
 
+            activeTransactionsToday.push(txObj);
             cachedTransactions = mergeTxSafely([txObj], cachedTransactions);
             writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
-            renderTransactionsList();
+            renderTransactionsForDay();
 
-            btn.disabled = true;
-            btn.textContent = 'Inahifadhi Muamala...';
+            document.getElementById('txAmountInput').value = '';
+            document.getElementById('txCommissionInput').value = '';
+
+            await upsertDayEntry({ commissionDelta: commission, saveKind: 'tx' });
+            await apiPost({ action: 'addTransaction', transaction: txObj });
+        }
+
+        async function removeTransactionItem(index) {
+            const removed = activeTransactionsToday[index];
+            if (!removed) return;
+            activeTransactionsToday.splice(index, 1);
+            cachedTransactions = cachedTransactions.filter(t => String(t.id) !== String(removed.id));
+            writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
+            renderTransactionsForDay();
+            await upsertDayEntry({ recalculateCommission: true, saveKind: 'tx_remove' });
+        }
+
+        async function upsertDayEntry(options = {}) {
+            if (!currentUser) return;
+            const dateVal = document.getElementById('entryDate').value || todayISO();
+            const dayOfWeek = document.getElementById('entryDayOfWeek').value;
+            const key = `${String(currentUser.username).toLowerCase()}__${dateVal}`;
+
+            const existing = cachedEntries.find(e => getEntryKey(e) === key) || {
+                username: currentUser.username,
+                date: dateVal,
+                dayOfWeek,
+                cashMorning: 0,
+                morningFloats: {},
+                morningTotal: 0,
+                cashNight: 0,
+                eveningFloats: {},
+                eveningTotal: 0,
+                commissionTotal: 0
+            };
+
+            const morningFloats = {};
+            NETWORKS_CONFIG.forEach(net => {
+                const el = document.getElementById('m_float_' + net.id);
+                morningFloats[net.id] = el ? (Number(el.value) || 0) : (existing.morningFloats[net.id] || 0);
+            });
+
+            const eveningFloats = {};
+            NETWORKS_CONFIG.forEach(net => {
+                const el = document.getElementById('e_float_' + net.id);
+                eveningFloats[net.id] = el ? (Number(el.value) || 0) : (existing.eveningFloats[net.id] || 0);
+            });
+
+            const cashMorning = document.getElementById('cashMorning').value !== ''
+                ? (Number(document.getElementById('cashMorning').value) || 0)
+                : existing.cashMorning;
+
+            const cashNight = document.getElementById('cashNight').value !== ''
+                ? (Number(document.getElementById('cashNight').value) || 0)
+                : existing.cashNight;
+
+            const mTotal = options.saveKind === 'morning'
+                ? computeMorningTotalFromInputs()
+                : (existing.morningTotal || computeMorningTotalFromInputs());
+
+            const eTotal = options.saveKind === 'evening'
+                ? computeEveningTotalFromInputs()
+                : (existing.eveningTotal || computeEveningTotalFromInputs());
+
+            const dayTxComm = activeTransactionsToday.reduce((sum, t) => sum + (Number(t.commission) || 0), 0);
+            const commissionTotal = dayTxComm > 0 ? dayTxComm : (existing.commissionTotal || 0);
+
+            const entryObj = normalizeEntryObj({
+                ...existing,
+                username: currentUser.username,
+                date: dateVal,
+                dayOfWeek,
+                cashMorning,
+                morningFloats,
+                morningTotal: mTotal,
+                cashNight,
+                eveningFloats,
+                eveningTotal: eTotal,
+                commissionTotal,
+                updatedAt: new Date().toISOString()
+            });
+
+            pendingEntryKeys.add(key);
+            cachedEntries = mergeEntriesSafely([entryObj], cachedEntries);
+            writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
+            renderHistory();
+            renderAdminEntriesList();
+
             try {
-                await apiPost({ action: 'addTransaction', transaction: txObj });
-                await syncAllFromSheet(true);
-                document.getElementById('txAmountInput').value = '';
-                document.getElementById('txCommissionInput').value = '';
-                alert('Muamala umehifadhiwa vizuri kwenye Google Sheet!');
-            } catch (err) {
-                alert('Muamala umehifadhiwa kwenye kifaa; imeshindwa kutuma moja kwa moja: ' + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Ongeza na Hifadhi Muamala';
+                const res = await apiPost({ action: 'saveEntry', entry: entryObj });
+                if (res && res.ok) {
+                    setSyncStatus('Kumbukumbu zimehifadhiwa kwenye Google Sheet.');
+                } else {
+                    setSyncStatus('Imehifadhiwa ndani ya kifaa; itasawazishwa na Sheet.');
+                }
+            } catch (e) {
+                setSyncStatus('Imehifadhiwa ndani ya kifaa; itasawazishwa na Sheet.');
             }
+        }
+
+        async function saveMorningEntry() {
+            await upsertDayEntry({ saveKind: 'morning' });
+            alert('Mtaji wa asubuhi umehifadhiwa vizuri.');
+        }
+
+        async function saveEveningEntry() {
+            await upsertDayEntry({ saveKind: 'evening' });
+            alert('Funga hesabu ya jioni imehifadhiwa vizuri.');
+        }
+
+        function switchMainTab(tabName) {
+            const vNew = document.getElementById('viewNew');
+            const vHist = document.getElementById('viewHistory');
+            const vAdmin = document.getElementById('viewAdmin');
+            const tNew = document.getElementById('mainTabNew');
+            const tHist = document.getElementById('mainTabHistory');
+            const tAdmin = document.getElementById('mainTabAdmin');
+
+            vNew.classList.add('hidden');
+            vHist.classList.add('hidden');
+            vAdmin.classList.add('hidden');
+
+            tNew.className = "px-4 py-2 text-sm font-semibold text-slate-500";
+            tHist.className = "px-4 py-2 text-sm font-semibold text-slate-500";
+            tAdmin.className = isUserAdmin(currentUser) ? "px-4 py-2 text-sm font-semibold text-amber-600" : "hidden";
+
+            if (tabName === 'history') {
+                vHist.classList.remove('hidden');
+                tHist.className = "px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900";
+                renderHistory();
+            } else if (tabName === 'admin' && isUserAdmin(currentUser)) {
+                vAdmin.classList.remove('hidden');
+                tAdmin.className = "px-4 py-2 text-sm font-semibold text-amber-700 border-b-2 border-amber-600";
+                renderAdminPanel();
+            } else {
+                vNew.classList.remove('hidden');
+                tNew.className = "px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900";
+            }
+        }
+
+        function switchSubTab(num) {
+            [1, 2, 3].forEach(i => {
+                document.getElementById('section' + i).classList.toggle('hidden', i !== num);
+                const btn = document.getElementById('subTab' + i);
+                if (i === num) {
+                    btn.className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow";
+                } else {
+                    btn.className = "py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow";
+                }
+            });
         }
 
         function setHistoryFilter(mode) {
             currentHistoryMode = mode;
-            const todayBtn = document.getElementById('filterTodayBtn');
-            const allBtn = document.getElementById('filterAllBtn');
+            const btnToday = document.getElementById('filterTodayBtn');
+            const btnAll = document.getElementById('filterAllBtn');
             if (mode === 'today') {
-                todayBtn.className = 'bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold';
-                allBtn.className = 'bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold';
+                btnToday.className = "bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold";
+                btnAll.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold";
             } else {
-                allBtn.className = 'bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold';
-                todayBtn.className = 'bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold';
+                btnAll.className = "bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold";
+                btnToday.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold";
             }
             renderHistory();
         }
 
-        function renderHistory() {
-            if (!currentUser) return;
-            const container = document.getElementById('historyContainer');
-            const admin = isAdminUser(currentUser);
-            const uname = currentUser.username.toLowerCase();
-            const todayStr = todayISO();
-
-            let list = cachedEntries.filter(e =>
-                admin || String(e.username || '').trim().toLowerCase() === uname
-            );
+        function getVisibleEntriesForCurrentUser() {
+            if (!currentUser) return [];
+            const admin = isUserAdmin(currentUser);
+            let list = admin
+                ? cachedEntries.slice()
+                : cachedEntries.filter(e => String(e.username).toLowerCase() === String(currentUser.username).toLowerCase());
 
             if (currentHistoryMode === 'today') {
-                list = list.filter(e => String(e.date || '').slice(0, 10) === todayStr);
+                const t = todayISO();
+                list = list.filter(e => e.date === t);
             }
+            return list;
+        }
 
-            list.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-
+        function renderHistory() {
+            const cont = document.getElementById('historyContainer');
+            const list = getVisibleEntriesForCurrentUser();
             if (!list.length) {
-                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Hakuna kumbukumbu zilizopatikana.</p>';
+                cont.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Bado hakuna kumbukumbu zilizohifadhiwa.</p>`;
                 return;
             }
 
-            container.innerHTML = list.map((e, idx) => {
-                const isEvening = String(e.type || '').toLowerCase() === 'evening';
-                const labelType = isEvening ? 'Jioni (Evening)' : 'Asubuhi (Morning)';
-                const badgeColor = isEvening ? 'bg-indigo-100 text-indigo-900' : 'bg-blue-100 text-blue-900';
+            cont.innerHTML = list.map((e, idx) => {
+                const diff = (Number(e.eveningTotal) || 0) - (Number(e.morningTotal) || 0);
+                const diffLabel = diff >= 0 ? `+${formatTSH(diff)}` : formatTSH(diff);
                 return `
-                    <div onclick="openEntryStatement('${encodeURIComponent(e._id || idx)}')" class="bg-white border rounded-xl p-4 shadow-sm hover:border-blue-500 cursor-pointer flex justify-between items-center gap-3">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-sm text-slate-800">${e.date || ''} (${e.dayOfWeek || ''})</span>
-                                <span class="text-[11px] font-bold px-2 py-0.5 rounded ${badgeColor}">${labelType}</span>
+                    <div onclick="openEntryStatement('${encodeURIComponent(getEntryKey(e))}')" class="bg-white p-4 rounded-xl border shadow-sm hover:border-blue-400 cursor-pointer transition space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="font-bold text-sm text-blue-900">${e.date || '-'}</span>
+                                <span class="text-xs text-slate-500 ml-2">${e.dayOfWeek || ''}</span>
+                                <span class="ml-2 text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">${e.username}</span>
                             </div>
-                            <div class="text-xs text-slate-500 mt-1">
-                                User: <b>${e.username || ''}</b> | Float: <b>${formatTSH(e.float)}</b> | Commission: <b class="text-green-700">${formatTSH(e.totalCommission)}</b>
-                            </div>
+                            <span class="text-xs font-bold text-green-700">Commission: ${formatTSH(e.commissionTotal)}</span>
                         </div>
-                        <div class="text-right">
-                            <div class="text-xs text-slate-400">Jumla</div>
-                            <div class="font-extrabold text-sm text-blue-900">${formatTSH(e.total)}</div>
+                        <div class="grid grid-cols-3 gap-2 text-xs pt-1 border-t">
+                            <div>Mtaji Asubuhi: <b>${formatTSH(e.morningTotal)}</b></div>
+                            <div>Hesabu Jioni: <b>${formatTSH(e.eveningTotal)}</b></div>
+                            <div>Tofauti: <b class="${diff < 0 ? 'text-red-600' : 'text-blue-900'}">${diffLabel}</b></div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
-        function openEntryStatement(encodedId) {
-            const targetId = decodeURIComponent(encodedId);
-            const entry = cachedEntries.find((e, idx) => String(e._id || idx) === targetId);
+        function openEntryStatement(encodedKey) {
+            const key = decodeURIComponent(encodedKey);
+            const entry = cachedEntries.find(e => getEntryKey(e) === key);
             if (!entry) return;
 
-            const nets = entry.networks || {};
-            const txList = getTransactionsForDateAndUser(entry.date, entry.username);
-
-            document.getElementById('modalTitle').textContent =
-                `Statement — ${entry.username} (${entry.date} | ${entry.type})`;
-
-            const netRows = NETWORKS_CONFIG.map(n => `
-                <tr class="border-b">
-                    <td class="py-1.5 font-semibold">${n.name}</td>
-                    <td class="py-1.5 text-right font-bold">${formatTSH(nets[n.id] || 0)}</td>
-                </tr>
-            `).join('');
-
-            const txRows = txList.length ? txList.map(t => `
-                <tr class="border-b">
-                    <td class="py-1.5">${t.netName || ''}</td>
-                    <td class="py-1.5 uppercase">${t.type || ''}</td>
-                    <td class="py-1.5 text-right">${formatTSH(t.amount)}</td>
-                    <td class="py-1.5 text-right text-green-700 font-semibold">${formatTSH(t.commission)}</td>
-                </tr>
-            `).join('') : `<tr><td colspan="4" class="py-2 text-center text-slate-400">Hakuna miamala kwa siku hii.</td></tr>`;
+            document.getElementById('modalTitle').textContent = `Statement — ${entry.username} (${entry.date})`;
+            const rowsHtml = NETWORKS_CONFIG.map(net => {
+                const mVal = Number(entry.morningFloats && entry.morningFloats[net.id]) || 0;
+                const eVal = Number(entry.eveningFloats && entry.eveningFloats[net.id]) || 0;
+                return `
+                    <tr class="border-b">
+                        <td class="p-2 font-semibold">${net.name}</td>
+                        <td class="p-2">${formatTSH(mVal)}</td>
+                        <td class="p-2">${formatTSH(eVal)}</td>
+                        <td class="p-2">${formatTSH(eVal - mVal)}</td>
+                    </tr>
+                `;
+            }).join('');
 
             document.getElementById('modalBody').innerHTML = `
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-lg border">
-                    <div><span class="text-slate-500 block">Cash</span><b>${formatTSH(entry.cash)}</b></div>
-                    <div><span class="text-slate-500 block">Float</span><b>${formatTSH(entry.float)}</b></div>
-                    <div><span class="text-slate-500 block">Jumla</span><b class="text-blue-900">${formatTSH(entry.total)}</b></div>
-                    <div><span class="text-slate-500 block">Variance</span><b>${formatTSH(entry.variance)}</b></div>
+                    <div><span class="text-slate-500 block">Mtumiaji</span><b>${entry.username}</b></div>
+                    <div><span class="text-slate-500 block">Tarehe</span><b>${entry.date} (${entry.dayOfWeek || ''})</b></div>
+                    <div><span class="text-slate-500 block">Total Asubuhi</span><b class="text-blue-900">${formatTSH(entry.morningTotal)}</b></div>
+                    <div><span class="text-slate-500 block">Total Jioni</span><b class="text-indigo-900">${formatTSH(entry.eveningTotal)}</b></div>
                 </div>
-                <div>
-                    <h4 class="font-bold mb-1">Salio la Mitandao</h4>
-                    <table class="w-full"><tbody>${netRows}</tbody></table>
-                </div>
-                <div>
-                    <h4 class="font-bold mb-1">Miamala ya Siku (Total Commission: ${formatTSH(entry.totalCommission)})</h4>
-                    <table class="w-full">
-                        <thead><tr class="bg-slate-100"><th class="p-1.5 text-left">Mtandao</th><th class="p-1.5 text-left">Aina</th><th class="p-1.5 text-right">Kiasi</th><th class="p-1.5 text-right">Kamisheni</th></tr></thead>
-                        <tbody>${txRows}</tbody>
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-2">Mtandao</th>
+                                <th class="p-2">Asubuhi</th>
+                                <th class="p-2">Jioni</th>
+                                <th class="p-2">Tofauti</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
                     </table>
                 </div>
+                <div class="flex justify-between items-center bg-green-50 border border-green-200 p-3 rounded-lg">
+                    <span class="font-bold text-green-900">Jumla ya Kamisheni ya Siku:</span>
+                    <span class="font-extrabold text-green-800 text-sm">${formatTSH(entry.commissionTotal)}</span>
+                </div>
             `;
-
             document.getElementById('detailModal').classList.remove('hidden');
         }
 
@@ -1026,36 +1050,36 @@
         }
 
         function renderAdminPanel() {
-            if (!currentUser || !isAdminUser(currentUser)) return;
-
+            if (!isUserAdmin(currentUser)) return;
             const accBody = document.getElementById('adminAccountsManagementBody');
             const usersTable = document.getElementById('adminUsersTable');
-            const filterSel = document.getElementById('adminUserFilterSelect');
+            const filterSelect = document.getElementById('adminUserFilterSelect');
 
-            const prevFilter = filterSel.value;
-            filterSel.innerHTML = '<option value="ALL">Watumiaji Wote (All Users)</option>' +
-                cachedUsers.map(u => `<option value="${u.username}">${u.username}</option>`).join('');
-            if (prevFilter) filterSel.value = prevFilter;
+            const currentFilter = filterSelect.value || 'ALL';
+            filterSelect.innerHTML = `<option value="ALL">Watumiaji Wote (All Users)</option>` + cachedUsers.map(u => `
+                <option value="${u.username}">${u.username}</option>
+            `).join('');
+            if ([...filterSelect.options].some(o => o.value === currentFilter)) {
+                filterSelect.value = currentFilter;
+            }
 
             accBody.innerHTML = cachedUsers.map(u => {
-                const count = cachedEntries.filter(e =>
-                    String(e.username || '').toLowerCase() === u.username.toLowerCase()
-                ).length;
-                const active = normalizeStatus(u.status) === 'active';
+                const count = cachedEntries.filter(e => String(e.username).toLowerCase() === u.username.toLowerCase()).length;
+                const isActive = normalizeStatus(u.status) === 'active';
                 return `
                     <tr class="border-b">
                         <td class="p-2.5 font-bold">${u.username}</td>
-                        <td class="p-2.5">${u.accountType || 'regular'}</td>
+                        <td class="p-2.5">${u.accountType}</td>
                         <td class="p-2.5">${u.phone || '-'}</td>
                         <td class="p-2.5">${count}</td>
                         <td class="p-2.5">
-                            <span class="px-2 py-0.5 rounded font-bold ${active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                                ${active ? 'active' : 'inactive'}
+                            <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${isActive ? 'Active' : 'Inactive'}
                             </span>
                         </td>
                         <td class="p-2.5 text-right">
-                            <button type="button" onclick="toggleUserStatus('${u.username}', '${active ? 'inactive' : 'active'}')" class="px-2.5 py-1 rounded font-bold ${active ? 'bg-red-100 text-red-700' : 'bg-green-600 text-white'}">
-                                ${active ? 'Zima' : 'Fufua'}
+                            <button type="button" onclick="toggleUserStatus('${u.username}', '${isActive ? 'inactive' : 'active'}')" class="px-2.5 py-1 rounded text-[11px] font-bold ${isActive ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-600 text-white hover:bg-green-700'}">
+                                ${isActive ? 'Zima' : 'Fufua'}
                             </button>
                         </td>
                     </tr>
@@ -1065,66 +1089,69 @@
             usersTable.innerHTML = cachedUsers.map(u => `
                 <tr class="border-b">
                     <td class="p-3 font-semibold">${u.username}</td>
-                    <td class="p-3">${u.accountType || 'regular'}</td>
+                    <td class="p-3">${u.accountType}</td>
                     <td class="p-3">${u.phone || '-'}</td>
-                    <td class="p-3 font-mono text-xs">${u.password || ''}</td>
+                    <td class="p-3 font-mono text-xs">${u.password || '-'}</td>
                 </tr>
             `).join('');
 
             renderAdminEntriesList();
         }
 
-        async function toggleUserStatus(username, nextStatus) {
-            cachedUsers = cachedUsers.map(u =>
-                u.username.toLowerCase() === username.toLowerCase() ? { ...u, status: nextStatus } : u
-            );
+        async function toggleUserStatus(username, newStatus) {
+            const target = cachedUsers.find(u => u.username.toLowerCase() === String(username).toLowerCase());
+            if (!target) return;
+            target.status = newStatus;
             writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
             renderAdminPanel();
-            try {
-                await apiPost({ action: 'setUserStatus', username, status: nextStatus });
-                await syncAllFromSheet(true);
-            } catch (err) {
-                alert('Imeshindwa kusasisha status kwenye Sheet: ' + err.message);
-            }
+            await apiPost({ action: 'updateUserStatus', username: target.username, status: newStatus });
         }
 
         function renderAdminEntriesList() {
-            const container = document.getElementById('adminEntriesContainer');
-            const selectedUser = document.getElementById('adminUserFilterSelect').value;
-            const search = String(document.getElementById('adminSearchInput').value || '').trim().toLowerCase();
+            const cont = document.getElementById('adminEntriesContainer');
+            if (!cont) return;
+            const userFilter = (document.getElementById('adminUserFilterSelect')?.value || 'ALL');
+            const query = (document.getElementById('adminSearchInput')?.value || '').trim().toLowerCase();
 
             const filtered = cachedEntries.filter(e => {
-                const matchUser = selectedUser === 'ALL' ||
-                    String(e.username || '').toLowerCase() === selectedUser.toLowerCase();
-                const matchSearch = !search ||
-                    String(e.username || '').toLowerCase().includes(search) ||
-                    String(e.date || '').toLowerCase().includes(search) ||
-                    String(e.type || '').toLowerCase().includes(search);
-                return matchUser && matchSearch;
+                const matchUser = userFilter === 'ALL' || String(e.username).toLowerCase() === userFilter.toLowerCase();
+                const matchQuery = !query ||
+                    String(e.username).toLowerCase().includes(query) ||
+                    String(e.date).toLowerCase().includes(query) ||
+                    String(e.dayOfWeek).toLowerCase().includes(query);
+                return matchUser && matchQuery;
             });
 
             if (!filtered.length) {
-                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Hakuna kumbukumbu za kuonyesha.</p>';
+                cont.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Hakuna kumbukumbu za kuonyesha.</p>`;
                 return;
             }
 
-            container.innerHTML = filtered.map(e => `
-                <div class="border rounded-lg p-3 flex justify-between items-center text-xs bg-slate-50">
+            cont.innerHTML = filtered.map(e => `
+                <div class="flex justify-between items-center p-3 rounded-lg border bg-slate-50 text-xs">
                     <div>
-                        <b>${e.username || ''}</b> — ${e.date || ''} (${e.type || ''}) | Jumla: <b>${formatTSH(e.total)}</b>
+                        <b class="text-blue-900">${e.username}</b> — <b>${e.date}</b> (${e.dayOfWeek || ''})
+                        <div class="text-slate-600 mt-0.5">Asubuhi: <b>${formatTSH(e.morningTotal)}</b> | Jioni: <b>${formatTSH(e.eveningTotal)}</b> | Comm: <b>${formatTSH(e.commissionTotal)}</b></div>
                     </div>
-                    <button type="button" onclick="deleteEntryLocal('${encodeURIComponent(e._id || '')}')" class="bg-red-600 text-white px-2.5 py-1 rounded font-bold">Futa</button>
+                    <button type="button" onclick="deleteEntryByAdmin('${encodeURIComponent(getEntryKey(e))}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded font-bold">Futa</button>
                 </div>
             `).join('');
         }
 
-        function deleteEntryLocal(encodedId) {
-            const targetId = decodeURIComponent(encodedId);
-            if (!confirm('Una uhakika unataka kufuta kumbukumbu hii kwenye mwonekano wa sasa?')) return;
-            cachedEntries = cachedEntries.filter(e => String(e._id || '') !== targetId);
+        async function deleteEntryByAdmin(encodedKey) {
+            const key = decodeURIComponent(encodedKey);
+            const target = cachedEntries.find(e => getEntryKey(e) === key);
+            if (!target) return;
+            if (!confirm(`Una uhakika unataka kufuta kumbukumbu ya ${target.username} ya tarehe ${target.date}?`)) return;
+
+            cachedEntries = cachedEntries.filter(e => getEntryKey(e) !== key);
+            pendingEntryKeys.delete(key);
             writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
             renderAdminEntriesList();
             renderHistory();
+            renderAdminPanel();
+
+            await apiPost({ action: 'deleteEntry', username: target.username, date: target.date });
         }
 
         function showLoginForm() {
@@ -1132,6 +1159,7 @@
             document.getElementById('registerCard').classList.add('hidden');
             document.getElementById('forgotPasswordCard').classList.add('hidden');
             document.getElementById('landingInfoSection').classList.remove('hidden');
+            document.getElementById('globalBackBtn').classList.add('hidden');
         }
 
         function showRegisterForm() {
@@ -1139,6 +1167,7 @@
             document.getElementById('registerCard').classList.remove('hidden');
             document.getElementById('forgotPasswordCard').classList.add('hidden');
             document.getElementById('landingInfoSection').classList.add('hidden');
+            document.getElementById('globalBackBtn').classList.remove('hidden');
         }
 
         function showForgotPasswordForm() {
@@ -1146,56 +1175,23 @@
             document.getElementById('registerCard').classList.add('hidden');
             document.getElementById('forgotPasswordCard').classList.remove('hidden');
             document.getElementById('landingInfoSection').classList.add('hidden');
+            document.getElementById('globalBackBtn').classList.remove('hidden');
         }
 
         function goBackHome() {
-            switchMainTab('new');
-        }
-
-        function switchMainTab(tab) {
-            ['new', 'history', 'admin'].forEach(t => {
-                document.getElementById('view' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('hidden');
-                const btn = document.getElementById('mainTab' + t.charAt(0).toUpperCase() + t.slice(1));
-                if (btn) btn.className = btn.className.replace('border-b-2 border-blue-900 text-blue-900', 'text-slate-500');
-            });
-
-            if (tab === 'new') {
-                document.getElementById('viewNew').classList.remove('hidden');
-                document.getElementById('globalBackBtn').classList.add('hidden');
-                document.getElementById('mainTabNew').className = 'px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900';
-            } else if (tab === 'history') {
-                document.getElementById('viewHistory').classList.remove('hidden');
-                document.getElementById('globalBackBtn').classList.remove('hidden');
-                document.getElementById('mainTabHistory').className = 'px-4 py-2 text-sm font-semibold text-blue-900 border-b-2 border-blue-900';
-                renderHistory();
-            } else if (tab === 'admin') {
-                document.getElementById('viewAdmin').classList.remove('hidden');
-                document.getElementById('globalBackBtn').classList.remove('hidden');
-                document.getElementById('mainTabAdmin').className = 'px-4 py-2 text-sm font-semibold text-amber-700 border-b-2 border-amber-700';
-                renderAdminPanel();
+            if (currentUser) {
+                switchMainTab('new');
+            } else {
+                showLoginForm();
             }
         }
 
-        function switchSubTab(num) {
-            [1, 2, 3].forEach(i => {
-                document.getElementById('section' + i).classList.add('hidden');
-                const b = document.getElementById('subTab' + i);
-                b.className = 'py-2.5 px-3 rounded-lg font-bold text-xs bg-white text-slate-600 shadow';
-            });
-            document.getElementById('section' + num).classList.remove('hidden');
-            const activeB = document.getElementById('subTab' + num);
-            activeB.className = 'py-2.5 px-3 rounded-lg font-bold text-xs bg-blue-900 text-white shadow';
-
-            if (num === 2) refreshEveningLivePreview();
-            if (num === 3) {
-                updateCommissionPreview();
-                renderTransactionsList();
-            }
-        }
-
-        function enterDashboard(userObj) {
-            currentUser = userObj;
-            localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(userObj));
+        function enterAuthenticatedSession(userObj) {
+            currentUser = normalizeUserObj(userObj);
+            if (!currentUser) return;
+            try {
+                localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(currentUser));
+            } catch (e) {}
 
             document.getElementById('loginCard').classList.add('hidden');
             document.getElementById('registerCard').classList.add('hidden');
@@ -1204,29 +1200,31 @@
             document.getElementById('dashboardSection').classList.remove('hidden');
             document.getElementById('userInfoHeader').classList.remove('hidden');
 
-            document.getElementById('userBadge').textContent = `${userObj.username} (${userObj.accountType || 'wakala'})`;
-            document.getElementById('activeUserLabel').textContent = userObj.username;
-
-            if (isAdminUser(userObj)) {
-                document.getElementById('mainTabAdmin').classList.remove('hidden');
-            } else {
-                document.getElementById('mainTabAdmin').classList.add('hidden');
-            }
+            const admin = isUserAdmin(currentUser);
+            document.getElementById('userBadge').textContent = `${currentUser.username} (${admin ? 'Admin' : currentUser.accountType})`;
+            document.getElementById('activeUserLabel').textContent = `${currentUser.username} (${admin ? 'Admin' : currentUser.accountType})`;
+            document.getElementById('mainTabAdmin').classList.toggle('hidden', !admin);
 
             if (!document.getElementById('entryDate').value) {
                 document.getElementById('entryDate').value = todayISO();
             }
             autoSelectDayOfWeek();
-            refreshMorningTotalPreview();
-            refreshEveningLivePreview();
-            renderTransactionsList();
-            renderHistory();
-            renderAdminPanel();
-            syncAllFromSheet(true);
+            switchMainTab('new');
+            switchSubTab(1);
+            syncAllFromSheet(false);
+        }
+
+        function logout() {
+            currentUser = null;
+            try {
+                localStorage.removeItem(STORAGE_KEYS.SESSION);
+            } catch (e) {}
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('userInfoHeader').classList.add('hidden');
+            showLoginForm();
         }
 
         async function handleLogin() {
-            const btn = document.getElementById('loginBtn');
             const uInput = document.getElementById('loginUsername').value.trim();
             const pInput = document.getElementById('loginPassword').value.trim();
 
@@ -1235,40 +1233,51 @@
                 return;
             }
 
+            const btn = document.getElementById('loginBtn');
+            const origText = btn.textContent;
             btn.disabled = true;
-            btn.textContent = 'Inahakiki...';
+            btn.textContent = 'Inakagua...';
 
             try {
-                await syncAllFromSheet(false);
-            } catch (_) {}
+                const res = await apiGet({ action: 'getAllData' });
+                if (res && res.ok) {
+                    if (Array.isArray(res.users)) {
+                        cachedUsers = mergeUsersSafely(res.users, cachedUsers);
+                        writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
+                    }
+                    if (Array.isArray(res.entries)) {
+                        cachedEntries = mergeEntriesSafely(res.entries, cachedEntries);
+                        writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
+                    }
+                    if (Array.isArray(res.transactions)) {
+                        cachedTransactions = mergeTxSafely(res.transactions, cachedTransactions);
+                        writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
+                    }
+                }
+            } catch (e) {}
 
-            const allUsers = mergeUsersSafely(cachedUsers, readLocalArray(STORAGE_KEYS.USERS));
-            cachedUsers = allUsers;
-            writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
-
-            const found = allUsers.find(u =>
+            const matched = cachedUsers.find(u =>
                 String(u.username || '').trim().toLowerCase() === uInput.toLowerCase() &&
                 String(u.password ?? '').trim() === pInput
             );
 
             btn.disabled = false;
-            btn.textContent = 'Ingia (Login)';
+            btn.textContent = origText;
 
-            if (!found) {
-                alert('Username au password si sahihi.');
+            if (!matched) {
+                alert('Username au password si sahihi');
                 return;
             }
 
-            if (normalizeStatus(found.status) !== 'active') {
-                alert('Akaunti yako imesitishwa kwa muda. Wasiliana na Admin/IT.');
+            if (normalizeStatus(matched.status) === 'inactive') {
+                alert('Akaunti yako imesitishwa kwa muda. Wasiliana na Admin kuifufulia.');
                 return;
             }
 
-            enterDashboard(found);
+            enterAuthenticatedSession(matched);
         }
 
         async function handleRegisterSubmit() {
-            const btn = document.getElementById('registerBtn');
             const username = document.getElementById('regUsername').value.trim();
             const email = document.getElementById('regEmail').value.trim();
             const phone = document.getElementById('regPhone').value.trim();
@@ -1280,93 +1289,126 @@
                 return;
             }
 
-            const newUser = {
+            const exists = cachedUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
+            if (exists) {
+                alert('Username hii tayari imesajiliwa.');
+                return;
+            }
+
+            const newUser = normalizeUserObj({
                 username,
                 email,
                 phone,
                 accountType,
                 password,
-                role: 'user',
                 status: 'active'
-            };
+            });
 
-            btn.disabled = true;
-            btn.textContent = 'Inasajili...';
+            cachedUsers = mergeUsersSafely([newUser], cachedUsers);
+            writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
 
             try {
-                await apiPost({ action: 'register', user: newUser });
-                cachedUsers = mergeUsersSafely([newUser], cachedUsers);
-                writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
-                await syncAllFromSheet(true);
-                alert('Usajili umekamilika! Sasa unaweza kuingia.');
-                document.getElementById('loginUsername').value = username;
-                document.getElementById('loginPassword').value = password;
-                showLoginForm();
-            } catch (err) {
-                alert('Imeshindwa kusajili kwenye Sheet: ' + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Kamilisha Usajili';
-            }
+                await apiPost({ action: 'registerUser', user: newUser });
+            } catch (e) {}
+
+            alert('Usajili umekamilika! Sasa unaweza kuingia.');
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = password;
+            showLoginForm();
         }
 
         async function handleResetPassword() {
-            const btn = document.getElementById('resetPassBtn');
             const username = document.getElementById('forgotUsername').value.trim();
             const phone = document.getElementById('forgotPhone').value.trim();
             const newPassword = document.getElementById('forgotNewPassword').value.trim();
 
             if (!username || !phone || !newPassword) {
-                alert('Jaza taarifa zote.');
+                alert('Jaza taarifa zote zinazohitajika.');
                 return;
             }
 
-            btn.disabled = true;
-            btn.textContent = 'Inabadili...';
-            try {
-                await apiPost({ action: 'resetPassword', username, phone, newPassword });
-                await syncAllFromSheet(true);
-                alert('Password imebadilishwa kikamilifu!');
-                showLoginForm();
-            } catch (err) {
-                alert('Imeshindwa kubadili password: ' + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Thibitisha na Badili Password';
-            }
-        }
+            const target = cachedUsers.find(u =>
+                u.username.toLowerCase() === username.toLowerCase() &&
+                String(u.phone || '').trim() === phone
+            );
 
-        function logout() {
-            currentUser = null;
-            localStorage.removeItem(STORAGE_KEYS.SESSION);
-            document.getElementById('dashboardSection').classList.add('hidden');
-            document.getElementById('userInfoHeader').classList.add('hidden');
-            document.getElementById('globalBackBtn').classList.add('hidden');
+            if (!target) {
+                alert('Username au namba ya simu haikupatikana.');
+                return;
+            }
+
+            target.password = newPassword;
+            writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
+
+            try {
+                await apiPost({ action: 'resetPassword', username: target.username, phone, newPassword });
+            } catch (e) {}
+
+            alert('Password imebadilishwa! Ingia sasa.');
             showLoginForm();
         }
 
-        // Init
-        renderNetworkInputs();
-        cachedUsers = readLocalArray(STORAGE_KEYS.USERS);
-        cachedEntries = readLocalArray(STORAGE_KEYS.ENTRIES);
-        cachedTransactions = readLocalArray(STORAGE_KEYS.TX);
-
-        syncAllFromSheet(false).then(() => {
+        async function syncAllFromSheet(showAlert = false) {
             try {
-                const rawSession = localStorage.getItem(STORAGE_KEYS.SESSION);
-                if (rawSession) {
-                    const parsed = JSON.parse(rawSession);
-                    if (parsed && parsed.username) {
-                        const fresh = cachedUsers.find(u =>
-                            u.username.toLowerCase() === String(parsed.username).toLowerCase()
-                        ) || parsed;
-                        if (normalizeStatus(fresh.status) === 'active') {
-                            enterDashboard(fresh);
-                        }
+                const res = await apiGet({ action: 'getAllData' });
+                if (res && res.ok) {
+                    if (Array.isArray(res.users)) {
+                        cachedUsers = mergeUsersSafely(res.users, cachedUsers);
+                        writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
+                    }
+                    if (Array.isArray(res.entries)) {
+                        cachedEntries = mergeEntriesSafely(res.entries, cachedEntries);
+                        writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
+                    }
+                    if (Array.isArray(res.transactions)) {
+                        cachedTransactions = mergeTxSafely(res.transactions, cachedTransactions);
+                        writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
+                    }
+                    setSyncStatus('Data imesawazishwa na Google Sheet.');
+                    if (currentUser) {
+                        loadCurrentDayFormValues();
+                        renderHistory();
+                        if (isUserAdmin(currentUser)) renderAdminPanel();
+                    }
+                    if (showAlert) alert('Data imesasishwa vizuri.');
+                }
+            } catch (e) {
+                if (showAlert) alert('Imeshindwa kusawazisha data sasa hivi.');
+            }
+        }
+
+        (function boot() {
+            initFloatInputs();
+            cachedUsers = mergeUsersSafely([], readLocalArray(STORAGE_KEYS.USERS));
+            cachedEntries = mergeEntriesSafely([], readLocalArray(STORAGE_KEYS.ENTRIES));
+            cachedTransactions = mergeTxSafely([], readLocalArray(STORAGE_KEYS.TX));
+
+            try {
+                const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
+                if (savedSession) {
+                    const parsedSession = normalizeUserObj(JSON.parse(savedSession));
+                    if (parsedSession && parsedSession.username) {
+                        enterAuthenticatedSession(parsedSession);
+                        return;
                     }
                 }
-            } catch (_) {}
-        });
+            } catch (e) {}
+
+            apiGet({ action: 'getAllData' }).then(res => {
+                if (res && res.ok && Array.isArray(res.users)) {
+                    cachedUsers = mergeUsersSafely(res.users, cachedUsers);
+                    writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
+                }
+                if (res && res.ok && Array.isArray(res.entries)) {
+                    cachedEntries = mergeEntriesSafely(res.entries, cachedEntries);
+                    writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
+                }
+                if (res && res.ok && Array.isArray(res.transactions)) {
+                    cachedTransactions = mergeTxSafely(res.transactions, cachedTransactions);
+                    writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
+                }
+            }).catch(() => {});
+        })();
     </script>
 </body>
 </html>
