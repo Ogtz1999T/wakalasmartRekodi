@@ -232,7 +232,19 @@
                     <!-- SEHEMU YA 3: MIAMALA -->
                     <div id="section3" class="hidden space-y-6">
                         <div class="bg-white rounded-xl shadow-md border-2 border-blue-900 p-5 space-y-4">
-                            <div class="bg-blue-900 text-white p-3 rounded-lg font-bold text-sm">Miamala Unazotuma na Kutoa (Auto Commission)</div>
+                            <div class="bg-blue-900 text-white p-3 rounded-lg font-bold text-sm flex justify-between items-center">
+                                <span>Miamala Unazotuma na Kutoa (Auto Commission)</span>
+                                <span class="bg-green-600 text-white px-2.5 py-1 rounded text-xs">Total Commission: <b id="totalCommissionBadge">0 TSH</b></span>
+                            </div>
+
+                            <div class="bg-green-50 border border-green-300 rounded-xl p-3.5 flex justify-between items-center">
+                                <div>
+                                    <div class="text-xs font-bold text-green-900">Jumla ya Kamisheni (Total Commission)</div>
+                                    <div class="text-[11px] text-green-700">Jumla ya kamisheni zote za miamala ya siku iliyochaguliwa</div>
+                                </div>
+                                <div id="totalCommissionDisplay" class="text-base font-extrabold text-green-800">0 TSH</div>
+                            </div>
+
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-600 mb-1">Mtandao</label>
@@ -270,11 +282,11 @@
                             <div class="flex flex-wrap gap-2">
                                 <button type="button" id="filterTodayBtn" onclick="setHistoryFilter('today')" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-bold">Kumbukumbu za Leo</button>
                                 <button type="button" id="filterAllBtn" onclick="setHistoryFilter('all')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-bold">Kumbukumbu Zote</button>
-                                <button type="button" onclick="loadHistoryEntries()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-semibold">Refresh</button>
+                                <button type="button" onclick="syncAllFromSheet(true)" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded text-xs font-semibold">Refresh</button>
                                 <button type="button" onclick="switchMainTab('new')" class="bg-blue-900 text-white px-3 py-1.5 rounded text-xs font-semibold">← Rudi Shughuli za Siku</button>
                             </div>
                         </div>
-                        <p id="historyFilterHint" class="text-xs text-slate-500">Bonyeza kumbukumbu yoyote kuona Statement kamili ya kila mtandao na Total ya Asubuhi na Jioni.</p>
+                        <p id="historyFilterHint" class="text-xs text-slate-500">Bonyeza kumbukumbu yoyote kuona Statement kamili ya kila mtandao, Total Commission na Total ya Asubuhi na Jioni.</p>
                     </div>
                     <div id="historyContainer" class="space-y-3">
                         <p class="text-xs text-slate-500 text-center py-4">Bado hakuna kumbukumbu zilizohifadhiwa.</p>
@@ -284,8 +296,30 @@
                 <!-- VIEW ADMIN -->
                 <div id="viewAdmin" class="hidden space-y-6">
                     <div class="bg-amber-50 border p-4 rounded-xl font-bold text-amber-900 flex justify-between items-center">
-                        <span>Admin Panel - Futa Kumbukumbu ya User & Orodha ya Watumiaji</span>
+                        <span>Admin Panel - Fufua Akaunti, Futa Kumbukumbu & Orodha ya Watumiaji</span>
                         <button type="button" onclick="switchMainTab('new')" class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-xs font-semibold">← Rudi Nyumbani</button>
+                    </div>
+
+                    <div class="bg-white rounded-xl border p-4 space-y-3">
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800">Usimamizi wa Akaunti (Fufua Akaunti Iliyokufa / Kuzimwa)</h4>
+                            <p class="text-xs text-slate-500">Akaunti ikifufuliwa, mtumiaji anaingia kama kawaida na anakuta kumbukumbu zake zote za zamani zikiwa salama.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100">
+                                        <th class="p-2.5">Username</th>
+                                        <th class="p-2.5">Aina</th>
+                                        <th class="p-2.5">Simu</th>
+                                        <th class="p-2.5">Kumbukumbu</th>
+                                        <th class="p-2.5">Hali (Status)</th>
+                                        <th class="p-2.5 text-right">Hatua</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminAccountsManagementBody"></tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="bg-white rounded-xl border p-4 space-y-4">
@@ -396,6 +430,14 @@
             } catch (e) {}
         }
 
+        function normalizeStatus(rawStatus) {
+            const s = String(rawStatus || 'active').trim().toLowerCase();
+            if (s === 'inactive' || s === 'suspended' || s === 'closed' || s === 'dead') {
+                return 'inactive';
+            }
+            return 'active';
+        }
+
         function normalizeUserObj(u) {
             if (!u || typeof u !== 'object') return null;
             const username = String(u.username || u.user || u.name || '').trim();
@@ -405,7 +447,9 @@
                 email: String(u.email || '').trim(),
                 phone: String(u.phone || u.simu || '').trim(),
                 accountType: String(u.accountType || u.account_type || u.role || 'regular').trim(),
-                password: String(u.password ?? u.pass ?? '')
+                password: String(u.password ?? u.pass ?? '').trim(),
+                role: String(u.role || '').trim(),
+                status: normalizeStatus(u.status)
             };
         }
 
@@ -426,7 +470,8 @@
                     password: norm.password || (existing ? existing.password : ''),
                     phone: norm.phone || (existing ? existing.phone : ''),
                     email: norm.email || (existing ? existing.email : ''),
-                    accountType: norm.accountType || (existing ? existing.accountType : 'regular')
+                    accountType: norm.accountType || (existing ? existing.accountType : 'regular'),
+                    status: u.status !== undefined ? normalizeStatus(u.status) : (existing ? existing.status : 'active')
                 });
             });
             return Array.from(map.values());
@@ -490,6 +535,17 @@
             cachedEntries = filtered;
             writeLocalArray(STORAGE_KEYS.ENTRIES, cachedEntries);
             return clean;
+        }
+
+        function calculateTotalCommission(username, dateStr) {
+            const uLower = String(username || '').trim().toLowerCase();
+            const dStr = String(dateStr || '').slice(0, 10);
+            return cachedTransactions
+                .filter(t =>
+                    String(t.username || '').trim().toLowerCase() === uLower &&
+                    String(t.date || t.timestamp || '').slice(0, 10) === dStr
+                )
+                .reduce((sum, t) => sum + (Number(t.commission) || 0), 0);
         }
 
         function setScreenVisibility(screenName) {
@@ -676,6 +732,7 @@
             const dayOfWeek = document.getElementById('entryDayOfWeek')?.value || '';
             const { cash, floatSum, total } = refreshMorningTotalPreview();
             const { networks } = collectNetAmounts('morning');
+            const totalCommission = calculateTotalCommission(currentUser.username, date);
 
             if (total <= 0) return alert('Weka Cash au salio la mtandao wa asubuhi.');
 
@@ -689,6 +746,7 @@
                 float: floatSum,
                 total,
                 amount: total,
+                totalCommission,
                 networks
             });
 
@@ -704,6 +762,7 @@
             const dayOfWeek = document.getElementById('entryDayOfWeek')?.value || '';
             const { cashNight, floatSum, eveningTotal } = refreshEveningLivePreview();
             const { networks } = collectNetAmounts('evening');
+            const totalCommission = calculateTotalCommission(currentUser.username, date);
 
             if (eveningTotal <= 0) return alert('Weka Cash ya usiku au salio la mitandao ya jioni.');
 
@@ -720,6 +779,7 @@
                 amount: eveningTotal,
                 morningTotal,
                 variance: eveningTotal - morningTotal,
+                totalCommission,
                 networks
             });
 
@@ -736,16 +796,19 @@
             const txType = document.getElementById('txTypeSelect')?.value || 'withdraw';
             const amount = Number(document.getElementById('txAmountInput')?.value) || 0;
             const commission = Number(document.getElementById('txCommissionInput')?.value) || 0;
+            const date = document.getElementById('entryDate')?.value || getTodayDateStr();
 
             if (amount <= 0) return alert('Weka kiasi cha pesa.');
 
             const tx = {
                 _id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
                 username: currentUser.username,
-                date: document.getElementById('entryDate')?.value || getTodayDateStr(),
+                date,
                 networkId: net.id,
                 networkName: net.name,
+                netName: net.name,
                 txType,
+                type: txType,
                 amount,
                 commission,
                 timestamp: new Date().toISOString()
@@ -753,12 +816,16 @@
 
             cachedTransactions.push(tx);
             writeLocalArray(STORAGE_KEYS.TX, cachedTransactions);
+
+            const totalCommission = calculateTotalCommission(currentUser.username, date);
+            const txPayload = { ...tx, totalCommission };
+
             renderTransactionsList();
-            await postToGoogleSheet({ action: 'addTransaction', transaction: tx, ...tx });
+            await postToGoogleSheet({ action: 'addTransaction', transaction: txPayload, ...txPayload });
 
             document.getElementById('txAmountInput').value = '';
             document.getElementById('txCommissionInput').value = '';
-            setSyncStatus('Muamala umetumwa kwenye Google Sheet.');
+            setSyncStatus(`Muamala umetumwa kwenye Google Sheet (Total Commission: ${formatTSH(totalCommission)}).`);
         }
 
         function deleteTransactionItem(txId) {
@@ -779,23 +846,28 @@
             );
             activeTransactionsToday = list;
 
+            const sumAmt = list.reduce((a, b) => a + (Number(b.amount) || 0), 0);
+            const sumComm = list.reduce((a, b) => a + (Number(b.commission) || 0), 0);
+
+            const badgeEl = document.getElementById('totalCommissionBadge');
+            const dispEl = document.getElementById('totalCommissionDisplay');
+            if (badgeEl) badgeEl.textContent = formatTSH(sumComm);
+            if (dispEl) dispEl.textContent = formatTSH(sumComm);
+
             if (!list.length) {
                 container.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">Hakuna muamala bado.</p>';
                 return;
             }
 
-            const sumAmt = list.reduce((a, b) => a + (Number(b.amount) || 0), 0);
-            const sumComm = list.reduce((a, b) => a + (Number(b.commission) || 0), 0);
-
             container.innerHTML = `
                 <div class="pb-2 mb-2 border-b flex justify-between text-xs font-bold text-blue-900">
                     <span>Jumla Miamala (${list.length}): ${formatTSH(sumAmt)}</span>
-                    <span class="text-green-700">Kamisheni: ${formatTSH(sumComm)}</span>
+                    <span class="text-green-700">Total Commission: ${formatTSH(sumComm)}</span>
                 </div>
                 ${list.map(t => `
                     <div class="py-2 flex justify-between items-center text-xs">
                         <div>
-                            <b>${t.networkName || t.networkId}</b> (${t.txType === 'send' ? 'Kutuma' : 'Kutoa'})
+                            <b>${t.netName || t.networkName || t.networkId}</b> (${(t.type || t.txType) === 'send' ? 'Kutuma' : 'Kutoa'})
                             <div class="text-slate-500">Kiasi: <b>${formatTSH(t.amount)}</b> | Kamisheni: <b class="text-green-700">${formatTSH(t.commission)}</b></div>
                         </div>
                         <button type="button" onclick="deleteTransactionItem('${t._id}')" class="text-red-600 font-bold px-2 py-1">Futa</button>
@@ -871,6 +943,8 @@
 
         function isAdmin(user) {
             if (!user) return false;
+            const r = String(user.role || '').trim().toLowerCase();
+            if (r === 'admin') return true;
             const u = String(user.username || '').trim().toLowerCase();
             return ['admin', 'jombay', 'kassimu'].includes(u) || String(user.accountType || '').toLowerCase() === 'admin';
         }
@@ -896,6 +970,7 @@
             container.innerHTML = rows.map(item => {
                 const isMorning = String(item.type || '').toLowerCase() === 'morning';
                 const dStr = String(item.date || item.timestamp || '').slice(0, 10);
+                const dayComm = calculateTotalCommission(item.username, dStr) || (Number(item.totalCommission) || 0);
                 return `
                     <div onclick="openDetailModal('${item._id}')" class="bg-white p-4 rounded-xl border hover:border-blue-900 cursor-pointer flex justify-between items-center">
                         <div>
@@ -904,7 +979,7 @@
                                 <span class="text-[11px] px-2 py-0.5 rounded font-bold ${isMorning ? 'bg-blue-100 text-blue-900' : 'bg-indigo-100 text-indigo-900'}">${isMorning ? 'Asubuhi' : 'Jioni'}</span>
                                 ${adm ? `<span class="text-xs text-slate-500">(${item.username})</span>` : ''}
                             </div>
-                            <div class="text-xs text-slate-500 mt-1">${item.dayOfWeek || ''} • Cash: ${formatTSH(item.cash || 0)} • Float: ${formatTSH(item.float || 0)}</div>
+                            <div class="text-xs text-slate-500 mt-1">${item.dayOfWeek || ''} • Cash: ${formatTSH(item.cash || 0)} • Float: ${formatTSH(item.float || 0)} • <span class="text-green-700 font-semibold">Total Comm: ${formatTSH(dayComm)}</span></div>
                         </div>
                         <div class="text-right">
                             <div class="font-bold text-sm text-blue-900">${formatTSH(item.total ?? item.amount ?? 0)}</div>
@@ -930,11 +1005,16 @@
                 String(t.username || '').trim().toLowerCase() === String(item.username || '').trim().toLowerCase() &&
                 String(t.date || t.timestamp || '').slice(0, 10) === dStr
             );
+            const dayTotalComm = dayTxs.reduce((sum, t) => sum + (Number(t.commission) || 0), 0) || (Number(item.totalCommission) || 0);
 
             document.getElementById('modalBody').innerHTML = `
                 <div class="flex justify-between items-center bg-slate-100 p-3 rounded-lg">
                     <div><b>JOMBAY ENTERPRISES</b><div>Mtumiaji: ${item.username} | Siku: ${item.dayOfWeek || '-'}</div></div>
-                    <div class="text-right"><b>Jumla Kuu</b><div class="text-sm font-bold text-blue-900">${formatTSH(item.total ?? item.amount ?? 0)}</div></div>
+                    <div class="text-right">
+                        <b>Jumla Kuu</b>
+                        <div class="text-sm font-bold text-blue-900">${formatTSH(item.total ?? item.amount ?? 0)}</div>
+                        <div class="text-xs font-bold text-green-700">Total Commission: ${formatTSH(dayTotalComm)}</div>
+                    </div>
                 </div>
                 <table class="w-full border-collapse">
                     <thead><tr class="bg-slate-50"><th class="p-2 border text-left">Kipengele / Mtandao</th><th class="p-2 border text-right">Salio</th></tr></thead>
@@ -944,8 +1024,11 @@
                     </tbody>
                 </table>
                 <div class="pt-2">
-                    <h4 class="font-bold mb-1">Miamala (${dStr})</h4>
-                    ${dayTxs.length ? dayTxs.map(t => `<div class="flex justify-between py-1 border-b"><span>${t.networkName || t.networkId} (${t.txType === 'send' ? 'Kutuma' : 'Kutoa'})</span><span><b>${formatTSH(t.amount)}</b> | Comm: <b class="text-green-700">${formatTSH(t.commission)}</b></span></div>`).join('') : '<p class="text-slate-400">Hakuna miamala.</p>'}
+                    <div class="flex justify-between items-center mb-1">
+                        <h4 class="font-bold">Miamala (${dStr})</h4>
+                        <span class="text-xs font-bold text-green-800">Total Commission: ${formatTSH(dayTotalComm)}</span>
+                    </div>
+                    ${dayTxs.length ? dayTxs.map(t => `<div class="flex justify-between py-1 border-b"><span>${t.netName || t.networkName || t.networkId} (${(t.type || t.txType) === 'send' ? 'Kutuma' : 'Kutoa'})</span><span><b>${formatTSH(t.amount)}</b> | Comm: <b class="text-green-700">${formatTSH(t.commission)}</b></span></div>`).join('') : '<p class="text-slate-400">Hakuna miamala.</p>'}
                 </div>
             `;
             document.getElementById('detailModal')?.classList.remove('hidden');
@@ -955,8 +1038,70 @@
             document.getElementById('detailModal')?.classList.add('hidden');
         }
 
+        function countUserRecords(username) {
+            const uLow = String(username || '').trim().toLowerCase();
+            const entCount = cachedEntries.filter(e => String(e.username || '').trim().toLowerCase() === uLow).length;
+            const txCount = cachedTransactions.filter(t => String(t.username || '').trim().toLowerCase() === uLow).length;
+            return entCount + txCount;
+        }
+
+        async function toggleUserStatus(username, newStatus) {
+            if (!isAdmin(currentUser)) return;
+            const uLow = String(username || '').trim().toLowerCase();
+            const cleanStatus = normalizeStatus(newStatus);
+
+            cachedUsers = cachedUsers.map(u =>
+                String(u.username || '').trim().toLowerCase() === uLow
+                    ? { ...u, status: cleanStatus }
+                    : u
+            );
+            writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
+
+            await postToGoogleSheet({
+                action: 'setUserStatus',
+                username,
+                status: cleanStatus
+            });
+
+            renderAdminPanel();
+            setSyncStatus(
+                cleanStatus === 'active'
+                    ? `Akaunti ya "${username}" imefufuliwa na kumbukumbu zake zote zipo salama.`
+                    : `Akaunti ya "${username}" imezimwa (kumbukumbu zake zimehifadhiwa salama).`
+            );
+        }
+
         function renderAdminPanel() {
             if (!isAdmin(currentUser)) return;
+
+            const accBody = document.getElementById('adminAccountsManagementBody');
+            if (accBody) {
+                accBody.innerHTML = cachedUsers.map(u => {
+                    const st = normalizeStatus(u.status);
+                    const isDead = st === 'inactive';
+                    const recCount = countUserRecords(u.username);
+                    return `
+                        <tr class="border-b">
+                            <td class="p-2.5 font-bold">${u.username}</td>
+                            <td class="p-2.5">${u.accountType || 'regular'}</td>
+                            <td class="p-2.5">${u.phone || '-'}</td>
+                            <td class="p-2.5 font-semibold text-blue-900">${recCount} kumbukumbu</td>
+                            <td class="p-2.5">
+                                <span class="px-2 py-0.5 rounded font-bold ${isDead ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}">
+                                    ${isDead ? 'Imekufa / Imezimwa' : 'Hai (Active)'}
+                                </span>
+                            </td>
+                            <td class="p-2.5 text-right">
+                                ${isDead
+                                    ? `<button type="button" onclick="toggleUserStatus('${u.username}', 'active')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded font-bold">Fufua Akaunti</button>`
+                                    : `<button type="button" onclick="toggleUserStatus('${u.username}', 'inactive')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded font-bold">Zimisha</button>`
+                                }
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
             const sel = document.getElementById('adminUserFilterSelect');
             const users = Array.from(new Set([...cachedUsers.map(u => u.username), ...cachedEntries.map(e => e.username)].filter(Boolean)));
             if (sel) {
@@ -1020,13 +1165,12 @@
 
             if (!username || !password) return alert('Weka Username na Password.');
 
-            // Hakiki kwanza kutoka Google Sheet kama username ipo kwenye kifaa kingine
             await syncAllFromSheet(false);
             if (cachedUsers.some(u => String(u.username || '').toLowerCase() === username.toLowerCase())) {
                 return alert('Username tayari ipo.');
             }
 
-            const newUser = normalizeUserObj({ username, email, phone, accountType, password });
+            const newUser = normalizeUserObj({ username, email, phone, accountType, password, status: 'active' });
             cachedUsers = mergeUsersSafely([newUser], cachedUsers);
             writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
             await postToGoogleSheet({ action: 'register', user: newUser, ...newUser });
@@ -1054,7 +1198,6 @@
                     String(u.password || '') === password
                 );
 
-                // Kama hayupo kwenye kifaa hiki (mf. simu nyingine), vuta kwanza kutoka Google Sheet
                 if (!user) {
                     await syncAllFromSheet(false);
                     user = cachedUsers.find(u =>
@@ -1065,6 +1208,10 @@
 
                 if (!user) {
                     return alert('Username au Password si sahihi.');
+                }
+
+                if (normalizeStatus(user.status) === 'inactive' && !isAdmin(user)) {
+                    return alert('Akaunti hii imezimwa/imekufa. Wasiliana na Admin aifufue — kumbukumbu zako zote za zamani zipo salama.');
                 }
 
                 enterDashboard(user);
@@ -1182,6 +1329,12 @@
                 refreshMorningTotalPreview();
                 refreshEveningLivePreview();
                 renderTransactionsList();
+                if (!document.getElementById('viewHistory')?.classList.contains('hidden')) {
+                    loadHistoryEntries();
+                }
+                if (currentUser && isAdmin(currentUser)) {
+                    renderAdminPanel();
+                }
                 setSyncStatus('Imesawazishwa na Google Sheet.');
                 if (showAlert) alert('Data imesasishwa!');
             } catch (e) {
