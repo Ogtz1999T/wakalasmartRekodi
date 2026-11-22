@@ -728,65 +728,79 @@
 
         async function saveMorningEntry() {
             if (!currentUser) return alert('Ingia kwanza.');
-            const date = document.getElementById('entryDate')?.value || getTodayDateStr();
-            const dayOfWeek = document.getElementById('entryDayOfWeek')?.value || '';
-            const { cash, floatSum, total } = refreshMorningTotalPreview();
-            const { networks } = collectNetAmounts('morning');
-            const totalCommission = calculateTotalCommission(currentUser.username, date);
+            const btn = document.getElementById('saveMorningBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Inahifadhi...'; }
 
-            if (total <= 0) return alert('Weka Cash au salio la mtandao wa asubuhi.');
+            try {
+                const date = document.getElementById('entryDate')?.value || getTodayDateStr();
+                const dayOfWeek = document.getElementById('entryDayOfWeek')?.value || '';
+                const { cash, floatSum, total } = refreshMorningTotalPreview();
+                const { networks } = collectNetAmounts('morning');
+                const totalCommission = calculateTotalCommission(currentUser.username, date);
 
-            const entry = persistEntryLocally({
-                username: currentUser.username,
-                accountType: currentUser.accountType || 'regular',
-                date,
-                dayOfWeek,
-                type: 'morning',
-                cash,
-                float: floatSum,
-                total,
-                amount: total,
-                totalCommission,
-                networks
-            });
+                if (total <= 0) return alert('Weka Cash au salio la mtandao wa asubuhi.');
 
-            await postToGoogleSheet({ action: 'saveEntry', entry });
-            setSyncStatus(`Mtaji wa asubuhi (${formatTSH(total)}) umetumwa kwenye Google Sheet.`);
-            alert('Mtaji wa Asubuhi umehifadhiwa!');
-            switchSubTab(2);
+                const entry = persistEntryLocally({
+                    username: currentUser.username,
+                    accountType: currentUser.accountType || 'regular',
+                    date,
+                    dayOfWeek,
+                    type: 'morning',
+                    cash,
+                    float: floatSum,
+                    total,
+                    amount: total,
+                    totalCommission,
+                    networks
+                });
+
+                await postToGoogleSheet({ action: 'saveEntry', entry });
+                setSyncStatus(`Mtaji wa asubuhi (${formatTSH(total)}) umehifadhiwa na kutumwa kwenye Google Sheet.`);
+                alert('Mtaji wa Asubuhi umehifadhiwa!');
+                switchSubTab(2);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Hifadhi Mtaji wa Asubuhi'; }
+            }
         }
 
         async function saveEveningEntry() {
             if (!currentUser) return alert('Ingia kwanza.');
-            const date = document.getElementById('entryDate')?.value || getTodayDateStr();
-            const dayOfWeek = document.getElementById('entryDayOfWeek')?.value || '';
-            const { cashNight, floatSum, eveningTotal } = refreshEveningLivePreview();
-            const { networks } = collectNetAmounts('evening');
-            const totalCommission = calculateTotalCommission(currentUser.username, date);
+            const btn = document.getElementById('saveEveningBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Inahifadhi...'; }
 
-            if (eveningTotal <= 0) return alert('Weka Cash ya usiku au salio la mitandao ya jioni.');
+            try {
+                const date = document.getElementById('entryDate')?.value || getTodayDateStr();
+                const dayOfWeek = document.getElementById('entryDayOfWeek')?.value || '';
+                const { cashNight, floatSum, eveningTotal } = refreshEveningLivePreview();
+                const { networks } = collectNetAmounts('evening');
+                const totalCommission = calculateTotalCommission(currentUser.username, date);
 
-            const morningTotal = getMorningTotalForSelectedDate();
-            const entry = persistEntryLocally({
-                username: currentUser.username,
-                accountType: currentUser.accountType || 'regular',
-                date,
-                dayOfWeek,
-                type: 'evening',
-                cash: cashNight,
-                float: floatSum,
-                total: eveningTotal,
-                amount: eveningTotal,
-                morningTotal,
-                variance: eveningTotal - morningTotal,
-                totalCommission,
-                networks
-            });
+                if (eveningTotal <= 0) return alert('Weka Cash ya usiku au salio la mitandao ya jioni.');
 
-            await postToGoogleSheet({ action: 'saveEntry', entry });
-            setSyncStatus(`Hesabu za jioni (${formatTSH(eveningTotal)}) zimetumwa kwenye Google Sheet.`);
-            alert('Hesabu za Jioni zimehifadhiwa!');
-            loadHistoryEntries();
+                const morningTotal = getMorningTotalForSelectedDate();
+                const entry = persistEntryLocally({
+                    username: currentUser.username,
+                    accountType: currentUser.accountType || 'regular',
+                    date,
+                    dayOfWeek,
+                    type: 'evening',
+                    cash: cashNight,
+                    float: floatSum,
+                    total: eveningTotal,
+                    amount: eveningTotal,
+                    morningTotal,
+                    variance: eveningTotal - morningTotal,
+                    totalCommission,
+                    networks
+                });
+
+                await postToGoogleSheet({ action: 'saveEntry', entry });
+                setSyncStatus(`Hesabu za jioni (${formatTSH(eveningTotal)}) zimehifadhiwa na kutumwa kwenye Google Sheet.`);
+                alert('Hesabu za Jioni zimehifadhiwa!');
+                switchMainTab('history');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Kamilisha na Hifadhi Funga Siku'; }
+            }
         }
 
         async function addTransactionItem() {
