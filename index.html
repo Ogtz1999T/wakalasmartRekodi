@@ -378,10 +378,10 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbwZYkH1CRdDkGsPREITZlFUDL5hOwpzJE3unreeSIhMjWPE4liPz35NMmzDy6Wx6Fc/exec";
         const STORAGE_KEYS = {
-            ENTRIES: "jombay_saved_entries_v4",
-            TX: "jombay_saved_tx_v4",
-            USERS: "jombay_saved_users_v4",
-            SESSION: "jombay_saved_session_v4"
+            ENTRIES: "jombay_saved_entries_v5",
+            TX: "jombay_saved_tx_v5",
+            USERS: "jombay_saved_users_v5",
+            SESSION: "jombay_saved_session_v5"
         };
 
         const NETWORKS_CONFIG = [
@@ -717,18 +717,13 @@
         async function postToGoogleSheet(payload) {
             if (!API_URL) return { ok: false, error: 'Missing API_URL' };
             try {
-                const res = await fetch(API_URL, {
+                await fetch(API_URL, {
                     method: 'POST',
-                    redirect: 'follow',
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
-                const text = await res.text();
-                try {
-                    return JSON.parse(text);
-                } catch (parseErr) {
-                    return { ok: true, raw: text };
-                }
+                return { ok: true };
             } catch (e) {
                 return { ok: false, error: String(e) };
             }
@@ -770,8 +765,8 @@
             try {
                 const resp = await postToGoogleSheet({ action: 'saveEntry', entry });
                 if (resp && resp.ok === false) {
-                    setSyncStatus(`Imekosa kuhifadhiwa Google Sheet: ${resp.error || 'Kosa la server'}`);
-                    alert(`Kumbukumbu imehifadhiwa kwenye kifaa, lakini Google Sheet imerudisha: ${resp.error || 'Kosa'}`);
+                    setSyncStatus(`Imekosa kutumwa Google Sheet: ${resp.error || 'Kosa la mtandao'}`);
+                    alert('Kumbukumbu imehifadhiwa kwenye kifaa. Hakiki mtandao au API_URL.');
                 } else {
                     setSyncStatus(`Mtaji wa asubuhi (${formatTSH(total)}) umehifadhiwa na kutumwa kwenye Google Sheet.`);
                     alert('Mtaji wa Asubuhi umehifadhiwa!');
@@ -822,8 +817,8 @@
             try {
                 const resp = await postToGoogleSheet({ action: 'saveEntry', entry });
                 if (resp && resp.ok === false) {
-                    setSyncStatus(`Imekosa kuhifadhiwa Google Sheet: ${resp.error || 'Kosa la server'}`);
-                    alert(`Kumbukumbu imehifadhiwa kwenye kifaa, lakini Google Sheet imerudisha: ${resp.error || 'Kosa'}`);
+                    setSyncStatus(`Imekosa kutumwa Google Sheet: ${resp.error || 'Kosa la mtandao'}`);
+                    alert('Kumbukumbu imehifadhiwa kwenye kifaa. Hakiki mtandao au API_URL.');
                 } else {
                     setSyncStatus(`Hesabu za jioni (${formatTSH(eveningTotal)}) zimehifadhiwa na kutumwa kwenye Google Sheet.`);
                     alert('Hesabu za Jioni zimehifadhiwa!');
@@ -872,7 +867,7 @@
             document.getElementById('txAmountInput').value = '';
             document.getElementById('txCommissionInput').value = '';
             if (resp && resp.ok === false) {
-                setSyncStatus(`Muamala umehifadhiwa ndani; Google Sheet imerudisha: ${resp.error || 'Kosa'}`);
+                setSyncStatus(`Muamala umehifadhiwa ndani; kosa la mtandao: ${resp.error || 'Kosa'}`);
             } else {
                 setSyncStatus(`Muamala umetumwa kwenye Google Sheet (Total Commission: ${formatTSH(totalCommission)}).`);
             }
