@@ -975,7 +975,7 @@
                 return;
             }
 
-            cont.innerHTML = list.map((e, idx) => {
+            cont.innerHTML = list.map((e) => {
                 const diff = (Number(e.eveningTotal) || 0) - (Number(e.morningTotal) || 0);
                 const diffLabel = diff >= 0 ? `+${formatTSH(diff)}` : formatTSH(diff);
                 return `
@@ -1099,12 +1099,12 @@
         }
 
         async function toggleUserStatus(username, newStatus) {
-            const target = cachedUsers.find(u => u.username.toLowerCase() === String(username).toLowerCase());
-            if (!target) return;
-            target.status = newStatus;
-            writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
-            renderAdminPanel();
-            await apiPost({ action: 'updateUserStatus', username: target.username, status: newStatus });
+            const res = await apiPost({ action: 'setUserStatus', username, status: newStatus });
+            if (res && res.ok) {
+                await syncAllFromSheet(false);
+            } else {
+                alert('Imeshindwa kubadili hali ya akaunti.');
+            }
         }
 
         function renderAdminEntriesList() {
@@ -1242,7 +1242,7 @@
                 const res = await apiGet({ action: 'getAllData' });
                 if (res && res.ok) {
                     if (Array.isArray(res.users)) {
-                        cachedUsers = mergeUsersSafely(res.users, cachedUsers);
+                        cachedUsers = mergeUsersSafely(res.users, []);
                         writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
                     }
                     if (Array.isArray(res.entries)) {
@@ -1256,7 +1256,8 @@
                 }
             } catch (e) {}
 
-            const matched = cachedUsers.find(u =>
+            const pool = cachedUsers.length ? cachedUsers : readLocalArray(STORAGE_KEYS.USERS);
+            const matched = pool.find(u =>
                 String(u.username || '').trim().toLowerCase() === uInput.toLowerCase() &&
                 String(u.password ?? '').trim() === pInput
             );
@@ -1289,11 +1290,10 @@
                 return;
             }
 
-            const exists = cachedUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
-            if (exists) {
-                alert('Username hii tayari imesajiliwa.');
-                return;
-            }
+            const btn = document.getElementById('registerBtn');
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Inasajili kwenye Sheet...';
 
             const newUser = normalizeUserObj({
                 username,
@@ -1301,20 +1301,34 @@
                 phone,
                 accountType,
                 password,
+                role: username.toLowerCase() === 'admin' ? 'admin' : 'user',
                 status: 'active'
             });
 
-            cachedUsers = mergeUsersSafely([newUser], cachedUsers);
-            writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
-
             try {
-                await apiPost({ action: 'registerUser', user: newUser });
-            } catch (e) {}
+                const res = await apiPost({ action: 'register', user: newUser });
+                if (!res || !res.ok) {
+                    alert('Usajili umeshindwa kwenye Sheet: ' + (res && res.error ? res.error : 'Jaribu tena.'));
+                    return;
+                }
 
-            alert('Usajili umekamilika! Sasa unaweza kuingia.');
-            document.getElementById('loginUsername').value = username;
-            document.getElementById('loginPassword').value = password;
-            showLoginForm();
+                await syncAllFromSheet(false);
+
+                document.getElementById('regUsername').value = '';
+                document.getElementById('regEmail').value = '';
+                document.getElementById('regPhone').value = '';
+                document.getElementById('regPassword').value = '';
+                document.getElementById('loginUsername').value = username;
+                document.getElementById('loginPassword').value = password;
+
+                alert('Usajili umekamilika na taarifa zimefika kwenye Google Sheet!');
+                showLoginForm();
+            } catch (err) {
+                alert('Hitilafu wakati wa kutuma kwenye Google Sheet: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
         }
 
         async function handleResetPassword() {
@@ -1327,25 +1341,26 @@
                 return;
             }
 
-            const target = cachedUsers.find(u =>
-                u.username.toLowerCase() === username.toLowerCase() &&
-                String(u.phone || '').trim() === phone
-            );
-
-            if (!target) {
-                alert('Username au namba ya simu haikupatikana.');
-                return;
-            }
-
-            target.password = newPassword;
-            writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
+            const btn = document.getElementById('resetPassBtn');
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Inabadili...';
 
             try {
-                await apiPost({ action: 'resetPassword', username: target.username, phone, newPassword });
-            } catch (e) {}
-
-            alert('Password imebadilishwa! Ingia sasa.');
-            showLoginForm();
+                const res = await apiPost({ action: 'resetPassword', username, phone, newPassword });
+                if (!res || !res.ok) {
+                    alert('Imeshindwa kubadili password: ' + (res && res.error ? res.error : 'Hakiki username na namba ya simu.'));
+                    return;
+                }
+                await syncAllFromSheet(false);
+                alert('Password imebadilishwa kwenye Google Sheet! Ingia sasa.');
+                showLoginForm();
+            } catch (err) {
+                alert('Hitilafu: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
         }
 
         async function syncAllFromSheet(showAlert = false) {
@@ -1353,7 +1368,7 @@
                 const res = await apiGet({ action: 'getAllData' });
                 if (res && res.ok) {
                     if (Array.isArray(res.users)) {
-                        cachedUsers = mergeUsersSafely(res.users, cachedUsers);
+                        cachedUsers = mergeUsersSafely(res.users, []);
                         writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
                     }
                     if (Array.isArray(res.entries)) {
@@ -1396,7 +1411,7 @@
 
             apiGet({ action: 'getAllData' }).then(res => {
                 if (res && res.ok && Array.isArray(res.users)) {
-                    cachedUsers = mergeUsersSafely(res.users, cachedUsers);
+                    cachedUsers = mergeUsersSafely(res.users, []);
                     writeLocalArray(STORAGE_KEYS.USERS, cachedUsers);
                 }
                 if (res && res.ok && Array.isArray(res.entries)) {
